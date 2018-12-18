@@ -1,0 +1,17 @@
+ Addr: OPCODE   LineNo: Source
+x3000: xe002         2:                  LEA  R0, HELLO_STR                  ; load the address of the HELLO_STR string into R0
+x3001: xf022         3:                  PUTS                                ; output the string pointed to by R0 to the console
+x3002: xf025         4:                  HALT                                ; halt the program
+x3003: x0048         5:        HELLO_STR .STRINGZ  "Hello World!"  ; store this string here in the program
+x3004: x0065         5:        HELLO_STR  
+x3005: x006c         5:        HELLO_STR  
+x3006: x006c         5:        HELLO_STR  
+x3007: x006f         5:        HELLO_STR  
+x3008: x0020         5:        HELLO_STR  
+x3009: x0057         5:        HELLO_STR  
+x300a: x006f         5:        HELLO_STR  
+x300b: x0072         5:        HELLO_STR  
+x300c: x006c         5:        HELLO_STR  
+x300d: x0064         5:        HELLO_STR  
+x300e: x0021         5:        HELLO_STR  
+x300f: x0000         5:        HELLO_STR  
