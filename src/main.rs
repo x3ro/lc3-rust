@@ -2,28 +2,17 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
+#[macro_use]
+extern crate num_derive;
+extern crate num_traits;
+
 mod state;
+mod opcodes;
+mod util;
+
 use state::VmState;
 use state::Registers;
-
-enum Opcodes {
-    BR   = 0x0, /* branch */
-    ADD  = 0x1, /* add  */
-    LD   = 0x2, /* load */
-    ST   = 0x3, /* store */
-    JS   = 0x4, /* jump register */
-    AND  = 0x5, /* bitwise and */
-    LDR  = 0x6, /* load register */
-    STR  = 0x7, /* store register */
-    RTI  = 0x8, /* unused */
-    NOT  = 0x9, /* bitwise not */
-    LDI  = 0xA, /* load indirect */
-    STI  = 0xB, /* store indirect */
-    JMP  = 0xC, /* jump */
-    RES  = 0xD, /* reserved (unused) */
-    LEA  = 0xE, /* load effective address */
-    TRAP = 0xF, /* execute trap */
-}
+use opcodes::*;
 
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
@@ -52,90 +41,42 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     Ok(())
 }
 
-fn sign_extend(x: u16, msb: u16) -> u16 {
-    // Left-pads `x` with the bit value at the bit-position indicated by `msb`. 
-    if (x >> (msb - 1)) == 0 {
-        return x;
-    }
-    return !((2 as u16).pow(msb as u32)-1) | x;
-}
-
-fn op_lea(state: &mut VmState, pc: usize) {
-    let instruction = state.memory[pc];
-    let dr = ((instruction >> 9) & 0b111) as usize;
-    let imm = sign_extend(instruction & 0b111111111, 9);
-    state.registers[dr] = ((pc+1) as u16) + imm;
-    state.registers[Registers::PC as usize] += 1
-    // TODO: set condition flags!
-
-    // println!("imm <0x{:x}>", imm);
-    // println!("reg <{}> val <0x{:x}>", dr, state.registers[dr]);
-    // println!("value at address <0x{:x}> is <0x{:x}>", state.registers[dr], state.memory[state.registers[dr] as usize]);
-}
-
-fn op_trap(state: &mut VmState, pc: usize) {
-    // R7 is where we jump to upon completion of the handler. In the current implementation,
-    // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
-    state.registers[Registers::R7 as usize] = (pc+1) as u16;
-
-    let trap_type = state.memory[pc] & 0b1111_1111;
-    match trap_type {
-        0x22 => trap_puts(state),
-        0x25 => trap_halt(state),
-        _ => panic!("Unimplemented trap vector <0x{:x}> at pc <0x{:x}>", trap_type, pc),
-    }
-
-    state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
-}
-
-fn trap_halt(state: &mut VmState) {
-    state.running = false
-}
-
-fn trap_puts(state: &mut VmState) {
-    let mut start = state.registers[Registers::R0 as usize] as usize;
-    while state.memory[start] != 0 {
-        print!("{}", ((state.memory[start] & 0xFF) as u8) as char);
-        start += 1;
-    }
-}
-
 fn run(state: &mut VmState) {
     while state.running {
         let pc = state.registers[Registers::PC as usize] as usize;
-        let opcode = state.memory[pc] >> 12;
+        let opcode = Opcode::from_instruction(state.memory[pc]);
         
         match opcode {
-            0xE => op_lea(state, pc),
-            0xF => op_trap(state, pc),
-            _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode, pc),
+            Opcode::LEA => op_lea(state, pc),
+            Opcode::TRAP => op_trap(state, pc),
+            _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode as u16, pc),
         }
     }
 }
 
-fn main() -> io::Result<()> {
+fn run_file(filename: &str) -> io::Result<VmState> {
     let mut state = VmState::new();
 
-    load_object_file("asm-test/test.obj", &mut state)?;
+    load_object_file(filename, &mut state)?;
     run(&mut state);
 
-    Ok(())
+    Ok(state)
 }
 
+fn main() -> io::Result<()> {
+    match run_file("asm-test/test.obj") {
+        Ok(_) => Ok(()),
+        Err(x) => Err(x),
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_sign_extend_negative() {
-        assert_eq!(sign_extend(0b0000_0001_0000_0000, 9), 0b1111_1111_0000_0000);
-        assert_eq!(sign_extend(0b0000_0010_1010_1010, 10), 0b1111_1110_1010_1010);
-        assert_eq!(sign_extend(0b0000_1000_0000_0001, 12), 0b1111_1000_0000_0001);
-    }
-
-    fn test_sign_extend_positive() {
-        assert_eq!(sign_extend(0b0000_0000_0101_0101, 9), 0b0000_0000_0101_0101);
-        assert_eq!(sign_extend(0b0000_1100_1100_1100, 13), 0b0000_1100_1100_1100);
+    fn test_lea() {
+        let state = run_file("tests/lea.obj").unwrap();
+        assert_eq!(state.registers[Registers::R0 as usize], 0x3002);
     }
 }
