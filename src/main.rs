@@ -1,16 +1,21 @@
-const MEM_SIZE: usize = 65535;
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
 
-struct Registers {
-    r0: u16,
-    r1: u16,
-    r2: u16,
-    r3: u16,
-    r4: u16,
-    r5: u16,
-    r6: u16,
-    r7: u16,
-    pc: u16,
-    cond: u16,
+const MEM_SIZE: usize = 65535;
+const REGISTER_COUNT: usize = 10;
+
+enum Registers {
+    R0 = 0,
+    R1,
+    R2,
+    R3,
+    R4,
+    R5,
+    R6,
+    R7,
+    PC,
+    COND,
 }
 
 enum Opcodes {
@@ -38,44 +43,118 @@ enum ConditionFlags {
     Negative = 1 << 2,
 }
 
-use std::fs::File;
-use std::io;
-use std::io::prelude::*;
+struct VmState {
+    memory: [u16; MEM_SIZE],
+    registers: [u16; REGISTER_COUNT],
+    running: bool,   
+}
 
-fn load_object_file(filename: &str, mem: &mut [u8]) -> io::Result<()> {
+fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
 
     let mut buffer: Vec<u8> = vec![];
     f.read_to_end(&mut buffer)?;
 
-    // The first two bytes of the object file indicate where to load the program
-    let orig: usize = (buffer[0] as usize) << 8 | buffer[1] as usize;
-    let program = &buffer[2..];
-    println!("Origin = 0x{:x}", orig);
+    // LC3 uses 16-bit words, so we need to combine two bytes into one word of memory
+    let even = buffer.iter().step_by(2);
+    let odd = buffer.iter().skip(1).step_by(2);
+    let zipped = even.zip(odd);
 
-    mem[orig..(orig + program.len())].copy_from_slice(program);
+    let data: Vec<u16> = zipped.map(|(&high, &low)| {
+        (high as u16) << 8 | low as u16
+    }).collect();
+
+    // The first two bytes of the object file indicate where to load the program
+    let orig: usize = data[0] as usize;
+    let program = &data[1..];
+    println!("Loaded object file at <0x{:x}>", orig);
+
+    state.memory[orig..(orig + program.len())].copy_from_slice(program);
+    state.registers[Registers::PC as usize] = orig as u16;
+
     Ok(())
 }
 
+fn sign_extend(x: u16, msb: u16) -> u16 {
+    // Left-pads `x` with the bit value at the bit-position indicated by `msb`. 
+    if (x >> (msb - 1)) == 0 {
+        return x;
+    }
+    return !((2 as u16).pow(9)-1) | x;
+}
+
+fn op_lea(state: &mut VmState, pc: usize) {
+    let instruction = state.memory[pc];
+    let dr = ((instruction >> 9) & 0b111) as usize;
+    let imm = sign_extend(instruction & 0b111111111, 9);
+    state.registers[dr] = ((pc+1) as u16) + imm;
+    state.registers[Registers::PC as usize] += 1
+    // println!("imm <0x{:x}>", imm);
+    // println!("reg <{}> val <0x{:x}>", dr, state.registers[dr]);
+    // println!("value at address <0x{:x}> is <0x{:x}>", state.registers[dr], state.memory[state.registers[dr] as usize]);
+}
+
+fn op_trap(state: &mut VmState, pc: usize) {
+    // R7 is where we jump to upon completion of the handler. In the current implementation,
+    // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
+    state.registers[Registers::R7 as usize] = (pc+1) as u16;
+
+    let trap_type = state.memory[pc] & 0b1111_1111;
+    match trap_type {
+        0x22 => trap_puts(state),
+        0x25 => trap_halt(state),
+        _ => panic!("Unimplemented trap vector <0x{:x}> at pc <0x{:x}>", trap_type, pc),
+    }
+
+    state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
+}
+
+fn trap_halt(state: &mut VmState) {
+    state.running = false
+}
+
+fn trap_puts(state: &mut VmState) {
+    let mut start = state.registers[Registers::R0 as usize] as usize;
+    while state.memory[start] != 0 {
+        print!("{}", ((state.memory[start] & 0xFF) as u8) as char);
+        start += 1;
+    }
+}
+
+fn run(state: &mut VmState) {
+    while state.running {
+        let pc = state.registers[Registers::PC as usize] as usize;
+        let opcode = state.memory[pc] >> 12;
+        
+        match opcode {
+            0xE => op_lea(state, pc),
+            0xF => op_trap(state, pc),
+            _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode, pc),
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
-    let mut mem: [u8; MEM_SIZE] = [0; MEM_SIZE];
-    let mut reg = Registers {
-        r0: 0,
-        r1: 0,
-        r2: 0,
-        r3: 0,
-        r4: 0,
-        r5: 0,
-        r6: 0,
-        r7: 0,
-        pc: 0x3000,
-        cond: 0,
+    let mut state = VmState {
+        memory: [0; MEM_SIZE],
+        registers: [0; REGISTER_COUNT],
+        running: true,
     };
 
-    println!("Before {:x}", mem[0x3000]);
-    load_object_file("asm-test/test.obj", &mut mem)?;
-    println!("After {:x}", mem[0x3000]);
+    load_object_file("asm-test/test.obj", &mut state)?;
+    run(&mut state);
 
-    println!("Bye!");
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sign_extend() {
+        assert_eq!(sign_extend(0b0000_0001_0000_0000, 9), 0b1111_1111_0000_0000);
+        assert_eq!(sign_extend(0b0000_0000_0101_0101, 9), 0b0000_0000_0101_0101);
+    }
 }
