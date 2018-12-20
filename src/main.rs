@@ -2,21 +2,9 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
-const MEM_SIZE: usize = 65535;
-const REGISTER_COUNT: usize = 10;
-
-enum Registers {
-    R0 = 0,
-    R1,
-    R2,
-    R3,
-    R4,
-    R5,
-    R6,
-    R7,
-    PC,
-    COND,
-}
+mod state;
+use state::VmState;
+use state::Registers;
 
 enum Opcodes {
     BR   = 0x0, /* branch */
@@ -37,18 +25,6 @@ enum Opcodes {
     TRAP = 0xF, /* execute trap */
 }
 
-enum ConditionFlags {
-    Positive = 1 << 0,
-    Zero = 1 << 1,
-    Negative = 1 << 2,
-}
-
-struct VmState {
-    memory: [u16; MEM_SIZE],
-    registers: [u16; REGISTER_COUNT],
-    running: bool,   
-}
-
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
 
@@ -65,12 +41,13 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     }).collect();
 
     // The first two bytes of the object file indicate where to load the program
-    let orig: usize = data[0] as usize;
+    let orig = data[0];
     let program = &data[1..];
     println!("Loaded object file at <0x{:x}>", orig);
 
-    state.memory[orig..(orig + program.len())].copy_from_slice(program);
-    state.registers[Registers::PC as usize] = orig as u16;
+    let memory_area = (orig as usize)..((orig as usize) + program.len());
+    state.memory[memory_area].copy_from_slice(program);
+    state.registers[Registers::PC as usize] = orig;
 
     Ok(())
 }
@@ -80,7 +57,7 @@ fn sign_extend(x: u16, msb: u16) -> u16 {
     if (x >> (msb - 1)) == 0 {
         return x;
     }
-    return !((2 as u16).pow(9)-1) | x;
+    return !((2 as u16).pow(msb as u32)-1) | x;
 }
 
 fn op_lea(state: &mut VmState, pc: usize) {
@@ -89,6 +66,8 @@ fn op_lea(state: &mut VmState, pc: usize) {
     let imm = sign_extend(instruction & 0b111111111, 9);
     state.registers[dr] = ((pc+1) as u16) + imm;
     state.registers[Registers::PC as usize] += 1
+    // TODO: set condition flags!
+
     // println!("imm <0x{:x}>", imm);
     // println!("reg <{}> val <0x{:x}>", dr, state.registers[dr]);
     // println!("value at address <0x{:x}> is <0x{:x}>", state.registers[dr], state.memory[state.registers[dr] as usize]);
@@ -135,11 +114,7 @@ fn run(state: &mut VmState) {
 }
 
 fn main() -> io::Result<()> {
-    let mut state = VmState {
-        memory: [0; MEM_SIZE],
-        registers: [0; REGISTER_COUNT],
-        running: true,
-    };
+    let mut state = VmState::new();
 
     load_object_file("asm-test/test.obj", &mut state)?;
     run(&mut state);
@@ -153,8 +128,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_sign_extend() {
+    fn test_sign_extend_negative() {
         assert_eq!(sign_extend(0b0000_0001_0000_0000, 9), 0b1111_1111_0000_0000);
+        assert_eq!(sign_extend(0b0000_0010_1010_1010, 10), 0b1111_1110_1010_1010);
+        assert_eq!(sign_extend(0b0000_1000_0000_0001, 12), 0b1111_1000_0000_0001);
+    }
+
+    fn test_sign_extend_positive() {
         assert_eq!(sign_extend(0b0000_0000_0101_0101, 9), 0b0000_0000_0101_0101);
+        assert_eq!(sign_extend(0b0000_1100_1100_1100, 13), 0b0000_1100_1100_1100);
     }
 }
