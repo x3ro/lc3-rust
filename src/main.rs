@@ -54,17 +54,17 @@ fn run(state: &mut VmState) {
     }
 }
 
-fn run_file(filename: &str) -> io::Result<VmState> {
-    let mut state = VmState::new();
+fn run_file(state: &mut VmState, filename: &str) -> io::Result<()> {
+    load_object_file(filename, state)?;
+    run(state);
 
-    load_object_file(filename, &mut state)?;
-    run(&mut state);
-
-    Ok(state)
+    Ok(())
 }
 
 fn main() -> io::Result<()> {
-    match run_file("asm-test/test.obj") {
+    let mut state = VmState::new();
+
+    match run_file(&mut state, "tests/puts.obj") {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
     }
@@ -76,7 +76,24 @@ mod tests {
 
     #[test]
     fn test_lea() {
-        let state = run_file("tests/lea.obj").unwrap();
+        let mut state = VmState::new();
+        let result = run_file(&mut state, "tests/lea.obj");
+        assert!(result.is_ok());
         assert_eq!(state.registers[Registers::R0 as usize], 0x3002);
     }
+
+
+    #[test]
+    fn test_puts() {
+        let mut s = Box::new(String::new());
+        {
+            let mut state = VmState::new();
+            state.print = Box::new(|x| s.push(x as char));
+            let result = run_file(&mut state, "tests/puts.obj");
+            assert!(result.is_ok());
+        }
+
+        assert_eq!("Hello World!", &mut *s);
+    }
+
 }

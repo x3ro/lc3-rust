@@ -20,18 +20,21 @@ pub enum ConditionFlags {
     Negative = 1 << 2,
 }
 
-pub struct VmState {
+pub struct VmState<'a> {
     pub memory: [u16; MEM_SIZE],
     pub registers: [u16; REGISTER_COUNT],
-    pub running: bool,   
+    pub running: bool,
+    pub print: Box<FnMut(u8) -> () + 'a>,
 }
 
-impl VmState {
+
+impl<'a> VmState<'a> {
     pub fn new() -> Self {
         return VmState {
             memory: [0; MEM_SIZE],
             registers: [0; REGISTER_COUNT],
             running: true,
+            print: Box::new(|x| print!("{}", x as char)),
         };
     }
 }

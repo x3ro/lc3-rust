@@ -70,7 +70,7 @@ fn trap_halt(state: &mut VmState) {
 fn trap_puts(state: &mut VmState) {
     let mut start = state.registers[Registers::R0 as usize] as usize;
     while state.memory[start] != 0 {
-        print!("{}", ((state.memory[start] & 0xFF) as u8) as char);
+        (state.print)((state.memory[start] & 0xFF) as u8);
         start += 1;
     }
 }
