@@ -75,26 +75,37 @@ fn main() -> io::Result<()> {
 mod tests {
     use super::*;
 
+    pub struct TestVmDisplay<'a> {
+        pub output: &'a mut String
+    }
+
+    impl<'a> state::VmDisplay for TestVmDisplay<'a> {
+        fn print(&mut self, c: u8) -> () {
+            self.output.push(c as char)
+        }
+    }
+
     #[test]
     fn test_lea() {
-        let mut state = VmState::new();
+        let mut state = MyVmState::new();
         let result = run_file(&mut state, "tests/lea.obj");
         assert!(result.is_ok());
-        assert_eq!(state.get_reg(Registers::R0), 0x3002);
+        assert_eq!(state.registers()[Registers::R0], 0x3002);
     }
 
 
     #[test]
     fn test_puts() {
-        let mut s = Box::new(String::new());
+        let mut output = String::new();
         {
-            let mut state = VmState::new();
-            state.print = Box::new(|x| s.push(x as char));
+            let d = TestVmDisplay{
+                output: &mut output
+            };
+
+            let mut state = MyVmState::new_with_display(Box::new(d));
             let result = run_file(&mut state, "tests/puts.obj");
             assert!(result.is_ok());
         }
-
-        assert_eq!("Hello World!", &mut *s);
+        assert_eq!("Hello World!", &mut output);
     }
-
 }

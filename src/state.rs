@@ -85,36 +85,54 @@ impl IndexMut<Registers> for VmRegisters {
     }
 }
 
+pub trait VmDisplay {
+    fn print(&mut self, u8);
+}
+
+pub struct DefaultVmDisplay {}
+
+impl VmDisplay for DefaultVmDisplay {
+    fn print(&mut self, c: u8) -> () {
+        print!("{}", c as char)
+    }
+}
+
 pub trait VmState {
-    fn print(&self, u8);
     fn halt(&mut self);
     fn running(&self) -> bool;
     fn memory(&mut self) -> &mut VmMemory;
     fn registers(&mut self) -> &mut VmRegisters;
-    
+    fn display(&mut self) -> &mut VmDisplay;
 }
 
-pub struct MyVmState {
+pub struct MyVmState<'a> {
     pub memory: VmMemory,
     pub registers: VmRegisters,
+    pub display: Box<VmDisplay + 'a>,
     pub running: bool,
 }
 
-impl MyVmState {
+impl<'a> MyVmState<'a> {
     pub fn new() -> Self {
         return Self {
             memory: VmMemory{memory: [0; MEM_SIZE]},
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
+            display: Box::new(DefaultVmDisplay{})
+        };
+    }
+
+    pub fn new_with_display(d: Box<VmDisplay + 'a>) -> Self {
+        return Self {
+            memory: VmMemory{memory: [0; MEM_SIZE]},
+            registers: VmRegisters {registers: [0; REGISTER_COUNT]},
+            running: true,
+            display: d
         };
     }
 }
 
-impl VmState for MyVmState {
-    fn print(&self, c: u8) -> () {
-        print!("{}", c as char)
-    }
-
+impl<'a> VmState for MyVmState<'a> {
     fn halt(&mut self) {
         self.running = false
     }
@@ -129,5 +147,9 @@ impl VmState for MyVmState {
 
     fn registers(&mut self) -> &mut VmRegisters {
         &mut self.registers
+    }
+
+    fn display(&mut self) -> &mut VmDisplay {
+        &mut *self.display
     }
 }

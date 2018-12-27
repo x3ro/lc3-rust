@@ -74,7 +74,7 @@ fn trap_puts(state: &mut VmState) {
     let mut start = state.registers()[Registers::R0];
     while state.memory()[start] != 0 {
         let character = (state.memory()[start] & 0xFF) as u8;
-        state.print(character);
+        state.display().print(character);
         start += 1;
     }
 }
