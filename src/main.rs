@@ -37,19 +37,19 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
     state.memory()[memory_area].copy_from_slice(program);
-    state.set_reg(Registers::PC, orig);
+    state.registers()[Registers::PC] = orig;
 
     Ok(())
 }
 
 fn run(state: &mut VmState) {
     while state.running() {
-        let pc = state.get_reg(Registers::PC) as usize;
-        let opcode = Opcode ::from_instruction(state.memory()[pc as u16]);
+        let pc = state.registers()[Registers::PC];
+        let opcode = Opcode::from_instruction(state.memory()[pc as u16]);
         
         match opcode {
-            Opcode::LEA => op_lea(state, pc),
-            Opcode::TRAP => op_trap(state, pc),
+            Opcode::LEA => op_lea(state, pc as usize),
+            Opcode::TRAP => op_trap(state, pc as usize),
             _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode as u16, pc),
         }
     }

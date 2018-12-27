@@ -37,11 +37,11 @@ impl Opcode {
 
 pub fn op_lea(state: &mut VmState, pc: usize) {
     let instruction = state.memory()[pc as u16];
-    let dr = ((instruction >> 9) & 0b111) as usize;
+    let dr = Registers::from_usize_or_panic(((instruction >> 9) & 0b111) as usize);
     let imm = sign_extend(instruction & 0b111111111, 9);
-    state.set_reg1(dr, ((pc+1) as u16) + imm);
-    let pc = state.get_reg(Registers::PC) + 1;
-    state.set_reg(Registers::PC, pc);
+    state.registers()[dr] = ((pc+1) as u16) + imm;
+    let pc = state.registers()[Registers::PC] + 1;
+    state.registers()[Registers::PC] = pc;
     // TODO: set condition flags!
 
     // println!("imm <0x{:x}>", imm);
@@ -62,8 +62,8 @@ pub fn op_trap(state: &mut VmState, pc: usize) {
     }
 
     //state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
-    let pc = state.get_reg(Registers::PC) + 1;
-    state.set_reg(Registers::PC, pc);
+    let pc = state.registers()[Registers::PC] + 1;
+    state.registers()[Registers::PC] = pc;
 }
 
 fn trap_halt(state: &mut VmState) {
@@ -71,7 +71,7 @@ fn trap_halt(state: &mut VmState) {
 }
 
 fn trap_puts(state: &mut VmState) {
-    let mut start = state.get_reg(Registers::R0);
+    let mut start = state.registers()[Registers::R0];
     while state.memory()[start] != 0 {
         let character = (state.memory()[start] & 0xFF) as u8;
         state.print(character);
