@@ -36,7 +36,7 @@ impl Opcode {
 }
 
 pub fn op_lea(state: &mut VmState, pc: usize) {
-    let instruction = state.get_mem(pc as u16);
+    let instruction = state.memory()[pc as u16];
     let dr = ((instruction >> 9) & 0b111) as usize;
     let imm = sign_extend(instruction & 0b111111111, 9);
     state.set_reg1(dr, ((pc+1) as u16) + imm);
@@ -54,7 +54,7 @@ pub fn op_trap(state: &mut VmState, pc: usize) {
     // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
     //state.registers[Registers::R7 as usize] = (pc+1) as u16;
 
-    let trap_type = state.get_mem(pc as u16) & 0b1111_1111;
+    let trap_type = state.memory()[pc as u16] & 0b1111_1111;
     match trap_type {
         0x22 => trap_puts(state),
         0x25 => trap_halt(state),
@@ -72,8 +72,9 @@ fn trap_halt(state: &mut VmState) {
 
 fn trap_puts(state: &mut VmState) {
     let mut start = state.get_reg(Registers::R0);
-    while state.get_mem(start) != 0 {
-        state.print((state.get_mem(start) & 0xFF) as u8);
+    while state.memory()[start] != 0 {
+        let character = (state.memory()[start] & 0xFF) as u8;
+        state.print(character);
         start += 1;
     }
 }
