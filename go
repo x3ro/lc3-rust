@@ -30,7 +30,7 @@ function ensure_lc3_tools {
 
 function cmd_test {
     for asm_file in $SCRIPT_DIR/tests/*.asm; do
-        lc3as "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
+        ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
     done
     cargo test
 }
