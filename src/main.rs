@@ -11,6 +11,7 @@ mod opcodes;
 mod util;
 
 use state::VmState;
+use state::MyVmState;
 use state::Registers;
 use opcodes::*;
 
@@ -35,16 +36,17 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     println!("Loaded object file at <0x{:x}>", orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
-    state.memory[memory_area].copy_from_slice(program);
-    state.registers[Registers::PC as usize] = orig;
+    //state.get_mem(memory_area).copy_from_slice(program);
+    state.set_mem_range(memory_area, program);
+    state.set_reg(Registers::PC, orig);
 
     Ok(())
 }
 
-fn run(state: &mut VmState) {
-    while state.running {
-        let pc = state.registers[Registers::PC as usize] as usize;
-        let opcode = Opcode::from_instruction(state.memory[pc]);
+fn run(state: &mut dyn VmState) {
+    while state.running() {
+        let pc = state.get_reg(Registers::PC) as usize;
+        let opcode = Opcode::from_instruction(state.get_mem(pc as u16));
         
         match opcode {
             Opcode::LEA => op_lea(state, pc),
@@ -62,7 +64,7 @@ fn run_file(state: &mut VmState, filename: &str) -> io::Result<()> {
 }
 
 fn main() -> io::Result<()> {
-    let mut state = VmState::new();
+    let mut state = MyVmState::new();
 
     match run_file(&mut state, "tests/puts.obj") {
         Ok(_) => Ok(()),
@@ -79,7 +81,7 @@ mod tests {
         let mut state = VmState::new();
         let result = run_file(&mut state, "tests/lea.obj");
         assert!(result.is_ok());
-        assert_eq!(state.registers[Registers::R0 as usize], 0x3002);
+        assert_eq!(state.get_reg(Registers::R0), 0x3002);
     }
 
 

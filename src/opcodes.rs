@@ -36,11 +36,12 @@ impl Opcode {
 }
 
 pub fn op_lea(state: &mut VmState, pc: usize) {
-    let instruction = state.memory[pc];
+    let instruction = state.get_mem(pc as u16);
     let dr = ((instruction >> 9) & 0b111) as usize;
     let imm = sign_extend(instruction & 0b111111111, 9);
-    state.registers[dr] = ((pc+1) as u16) + imm;
-    state.registers[Registers::PC as usize] += 1
+    state.set_reg1(dr, ((pc+1) as u16) + imm);
+    let pc = state.get_reg(Registers::PC) + 1;
+    state.set_reg(Registers::PC, pc);
     // TODO: set condition flags!
 
     // println!("imm <0x{:x}>", imm);
@@ -51,26 +52,28 @@ pub fn op_lea(state: &mut VmState, pc: usize) {
 pub fn op_trap(state: &mut VmState, pc: usize) {
     // R7 is where we jump to upon completion of the handler. In the current implementation,
     // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
-    state.registers[Registers::R7 as usize] = (pc+1) as u16;
+    //state.registers[Registers::R7 as usize] = (pc+1) as u16;
 
-    let trap_type = state.memory[pc] & 0b1111_1111;
+    let trap_type = state.get_mem(pc as u16) & 0b1111_1111;
     match trap_type {
         0x22 => trap_puts(state),
         0x25 => trap_halt(state),
         _ => panic!("Unimplemented trap vector <0x{:x}> at pc <0x{:x}>", trap_type, pc),
     }
 
-    state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
+    //state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
+    let pc = state.get_reg(Registers::PC) + 1;
+    state.set_reg(Registers::PC, pc);
 }
 
 fn trap_halt(state: &mut VmState) {
-    state.running = false
+    state.halt()
 }
 
 fn trap_puts(state: &mut VmState) {
-    let mut start = state.registers[Registers::R0 as usize] as usize;
-    while state.memory[start] != 0 {
-        (state.print)((state.memory[start] & 0xFF) as u8);
+    let mut start = state.get_reg(Registers::R0);
+    while state.get_mem(start) != 0 {
+        state.print((state.get_mem(start) & 0xFF) as u8);
         start += 1;
     }
 }
