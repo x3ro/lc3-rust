@@ -6,9 +6,19 @@ pub fn sign_extend(x: u16, msb: u16) -> u16 {
     return !((2 as u16).pow(msb as u32)-1) | x;
 }
 
+pub fn binary_add(left: u16, right: u16) -> u16 {
+    ((left as i16) + (right as i16)) as u16
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_binary_add() {
+        assert_eq!(binary_add(0b0000_0000_0000_0000, 0b0000_0000_0000_0001), 0b0000_0000_0000_0001);
+        assert_eq!(binary_add(0b0000_0000_0000_0000, 0b1111_1111_1111_1111), 0b1111_1111_1111_1111);
+    }
 
     #[test]
     fn test_sign_extend_negative() {

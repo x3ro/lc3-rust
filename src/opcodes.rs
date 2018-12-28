@@ -2,7 +2,9 @@ use num_traits::FromPrimitive;
 
 use state::VmState;
 use state::Registers;
+use state::ConditionFlags;
 use util::sign_extend;
+use util::binary_add;
 
 #[derive(FromPrimitive)]
 pub enum Opcode {
@@ -32,6 +34,33 @@ impl Opcode {
             Some(x) => x,
             None => panic!("Could not instantiate opcode from <0x{:X}>", opcode)
         }
+    }
+}
+
+fn update_condition_codes(state: &mut VmState, result: u16) {
+    state.registers()[Registers::PSR] &= 0b1111_1111_1111_1000;
+    match result  {
+        0 => state.registers()[Registers::PSR] |= ConditionFlags::Zero as u16,
+        x if x >= 32768 => state.registers()[Registers::PSR] |= ConditionFlags::Negative as u16,
+        _ => state.registers()[Registers::PSR] |= ConditionFlags::Positive as u16,
+    }
+}
+
+pub fn op_add(state: &mut VmState, pc: usize) {
+    let instruction = state.memory()[pc as u16];
+    let dr = Registers::from_u16_or_panic((instruction >> 9) & 0b111);
+    let sr1 = Registers::from_u16_or_panic((instruction >> 6) & 0b111);
+
+    if ((instruction >> 5) & 0x1) == 0 {
+        let sr2 = Registers::from_u16_or_panic(instruction & 0b111);
+        // /state.registers()[Registers::R0] = state.registers()
+        unimplemented!();
+    } else {
+        let imm = sign_extend((instruction & 0b11111) as u16, 5);
+        let result = binary_add(state.registers()[sr1], imm);
+        state.registers()[dr] = result;
+        update_condition_codes(state, result);
+        state.registers()[Registers::PC] += 1;
     }
 }
 

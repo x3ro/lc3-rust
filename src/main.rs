@@ -48,6 +48,7 @@ fn run(state: &mut VmState) {
         let opcode = Opcode::from_instruction(state.memory()[pc as u16]);
         
         match opcode {
+            Opcode::ADD => op_add(state, pc as usize),
             Opcode::LEA => op_lea(state, pc as usize),
             Opcode::TRAP => op_trap(state, pc as usize),
             _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode as u16, pc),
@@ -58,7 +59,6 @@ fn run(state: &mut VmState) {
 fn run_file(state: &mut VmState, filename: &str) -> io::Result<()> {
     load_object_file(filename, state)?;
     run(state);
-
     Ok(())
 }
 
@@ -74,6 +74,7 @@ fn main() -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use state::ConditionFlags;
 
     pub struct TestVmDisplay<'a> {
         pub output: &'a mut String
@@ -93,6 +94,25 @@ mod tests {
         assert_eq!(state.registers()[Registers::R0], 0x3002);
     }
 
+    #[test]
+    fn test_add_immediate() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/add_immediate.obj");
+        assert!(result.is_ok());
+
+        assert_eq!(state.registers()[Registers::R0], 0x7);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16) , ConditionFlags::Positive as u16);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0x0);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16) , ConditionFlags::Zero as u16);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0xFFFF);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16) , ConditionFlags::Negative as u16);
+    }
 
     #[test]
     fn test_puts() {

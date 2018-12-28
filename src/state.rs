@@ -18,14 +18,21 @@ pub enum Registers {
     R6,
     R7,
     PC,
-    COND,
+    PSR,
 }
 
 impl Registers {
     pub fn from_usize_or_panic(index: usize) -> Self {
         match Registers::from_usize(index) {
             Some(x) => x,
-            None => panic!("Register with index <0x{:X}> does not exist", index)
+            None => panic!("Register with usize index <0x{:X}> does not exist", index)
+        }
+    }
+
+    pub fn from_u16_or_panic(index: u16) -> Self {
+        match Registers::from_u16(index) {
+            Some(x) => x,
+            None => panic!("Register with u16 index <0x{:X}> does not exist", index)
         }
     }
 }
@@ -103,6 +110,8 @@ pub trait VmState {
     fn memory(&mut self) -> &mut VmMemory;
     fn registers(&mut self) -> &mut VmRegisters;
     fn display(&mut self) -> &mut VmDisplay;
+    fn increment_pc(&mut self);
+    fn resume(&mut self);
 }
 
 pub struct MyVmState<'a> {
@@ -110,6 +119,7 @@ pub struct MyVmState<'a> {
     pub registers: VmRegisters,
     pub display: Box<VmDisplay + 'a>,
     pub running: bool,
+    pub error: Option<String>,
 }
 
 impl<'a> MyVmState<'a> {
@@ -118,7 +128,8 @@ impl<'a> MyVmState<'a> {
             memory: VmMemory{memory: [0; MEM_SIZE]},
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
-            display: Box::new(DefaultVmDisplay{})
+            display: Box::new(DefaultVmDisplay{}),
+            error: None,
         };
     }
 
@@ -127,7 +138,8 @@ impl<'a> MyVmState<'a> {
             memory: VmMemory{memory: [0; MEM_SIZE]},
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
-            display: d
+            display: d,
+            error: None,
         };
     }
 }
@@ -135,6 +147,13 @@ impl<'a> MyVmState<'a> {
 impl<'a> VmState for MyVmState<'a> {
     fn halt(&mut self) {
         self.running = false
+    }
+
+    // If the VM is halted, this was caused by a HALT trap
+    // We need to increment the PC to resume, otherwise the
+    // VM would simply execute HALT again
+    fn resume(&mut self) {
+        self.running = true
     }
 
     fn running(&self) -> bool {
@@ -151,5 +170,9 @@ impl<'a> VmState for MyVmState<'a> {
 
     fn display(&mut self) -> &mut VmDisplay {
         &mut *self.display
+    }
+
+    fn increment_pc(&mut self) {
+        self.registers()[Registers::PC] += 1;
     }
 }
