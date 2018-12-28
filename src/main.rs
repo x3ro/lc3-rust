@@ -49,6 +49,7 @@ fn run(state: &mut VmState) {
         
         match opcode {
             Opcode::ADD => op_add(state, pc as usize),
+            Opcode::LD => op_ld(state, pc as usize),
             Opcode::LEA => op_lea(state, pc as usize),
             Opcode::TRAP => op_trap(state, pc as usize),
             _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode as u16, pc),
@@ -86,6 +87,27 @@ mod tests {
         }
     }
 
+    #[inline]
+    fn assert_cc_positive(state: &mut VmState) {
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), ConditionFlags::Positive as u16);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), 0);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), 0);
+    }
+
+    #[inline]
+    fn assert_cc_zero(state: &mut VmState) {
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), 0);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), ConditionFlags::Zero as u16);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), 0);
+    }
+
+    #[inline]
+    fn assert_cc_negative(state: &mut VmState) {
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), 0);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), 0);
+        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), ConditionFlags::Negative as u16);
+    }
+
     #[test]
     fn test_lea() {
         let mut state = MyVmState::new();
@@ -101,17 +123,57 @@ mod tests {
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x7);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16) , ConditionFlags::Positive as u16);
+        assert_cc_positive(&mut state);
 
         state.resume();
         run(&mut state);
         assert_eq!(state.registers()[Registers::R0], 0x0);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16) , ConditionFlags::Zero as u16);
+        assert_cc_zero(&mut state);
 
         state.resume();
         run(&mut state);
         assert_eq!(state.registers()[Registers::R0], 0xFFFF);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16) , ConditionFlags::Negative as u16);
+        assert_cc_negative(&mut state);
+    }
+
+    #[test]
+    fn test_add_register() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/add_register.obj");
+        assert!(result.is_ok());
+
+        assert_eq!(state.registers()[Registers::R0], 0x10);
+        assert_cc_positive(&mut state);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0x0);
+        assert_cc_zero(&mut state);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0xFFF0);
+        assert_cc_negative(&mut state);
+    }
+
+    #[test]
+    fn test_ld() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/ld.obj");
+        assert!(result.is_ok());
+
+        assert_eq!(state.registers()[Registers::R0], 0x4242);
+        assert_cc_positive(&mut state);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0x0);
+        assert_cc_zero(&mut state);
+
+        state.resume();
+        run(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0xFFFF);
+        assert_cc_negative(&mut state);
     }
 
     #[test]

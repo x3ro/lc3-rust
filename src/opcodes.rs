@@ -37,12 +37,12 @@ impl Opcode {
     }
 }
 
-fn update_condition_codes(state: &mut VmState, result: u16) {
+fn update_condition_codes(state: &mut VmState, value: u16) {
     state.registers()[Registers::PSR] &= 0b1111_1111_1111_1000;
-    match result  {
-        0 => state.registers()[Registers::PSR] |= ConditionFlags::Zero as u16,
-        x if x >= 32768 => state.registers()[Registers::PSR] |= ConditionFlags::Negative as u16,
-        _ => state.registers()[Registers::PSR] |= ConditionFlags::Positive as u16,
+    match value as i16 {
+        x if x < 0 => state.registers()[Registers::PSR] |= ConditionFlags::Negative as u16,
+        x if x > 0 => state.registers()[Registers::PSR] |= ConditionFlags::Positive as u16,
+        _ => state.registers()[Registers::PSR] |= ConditionFlags::Zero as u16,
     }
 }
 
@@ -53,15 +53,27 @@ pub fn op_add(state: &mut VmState, pc: usize) {
 
     if ((instruction >> 5) & 0x1) == 0 {
         let sr2 = Registers::from_u16_or_panic(instruction & 0b111);
-        // /state.registers()[Registers::R0] = state.registers()
-        unimplemented!();
+        let result = binary_add(state.registers()[sr1], state.registers()[sr2]);
+        state.registers()[dr] = result;
+        update_condition_codes(state, result);
     } else {
         let imm = sign_extend((instruction & 0b11111) as u16, 5);
         let result = binary_add(state.registers()[sr1], imm);
         state.registers()[dr] = result;
         update_condition_codes(state, result);
-        state.registers()[Registers::PC] += 1;
     }
+    state.registers()[Registers::PC] += 1;
+}
+
+pub fn op_ld(state: &mut VmState, pc: usize) {
+    let instruction = state.memory()[pc as u16];
+    let dr = Registers::from_u16_or_panic((instruction >> 9) & 0b111);
+    let imm = sign_extend(instruction & 0b111111111, 9);
+    let address = binary_add(state.registers()[Registers::PC] + 1, imm);
+    let value = state.memory()[address];
+    update_condition_codes(state, value);
+    state.registers()[dr] = state.memory()[address];
+    state.registers()[Registers::PC] += 1;
 }
 
 pub fn op_lea(state: &mut VmState, pc: usize) {
