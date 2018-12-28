@@ -2,6 +2,8 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 
+type Result<T> = std::result::Result<T, String>;
+
 #[macro_use]
 extern crate num_derive;
 extern crate num_traits;
@@ -9,10 +11,12 @@ extern crate num_traits;
 mod state;
 mod opcodes;
 mod util;
+mod parser;
 
 use state::VmState;
 use state::MyVmState;
 use state::Registers;
+use parser::Instruction;
 use opcodes::*;
 
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
@@ -42,25 +46,19 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     Ok(())
 }
 
-fn run(state: &mut VmState) {
+fn run(state: &mut VmState) -> Result<()> {
     while state.running() {
-        let pc = state.registers()[Registers::PC];
-        let opcode = Opcode::from_instruction(state.memory()[pc as u16]);
-        
-        match opcode {
-            Opcode::ADD => op_add(state, pc as usize),
-            Opcode::LD => op_ld(state, pc as usize),
-            Opcode::LEA => op_lea(state, pc as usize),
-            Opcode::TRAP => op_trap(state, pc as usize),
-            _ => panic!("Unrecognized opcode <0x{:x}> at pc <0x{:x}>", opcode as u16, pc),
-        }
+        execute_next_instruction(state)?;
     }
+    Ok(())
 }
 
 fn run_file(state: &mut VmState, filename: &str) -> io::Result<()> {
     load_object_file(filename, state)?;
-    run(state);
-    Ok(())
+    match run(state) {
+        Ok(x) => Ok(x),
+        Err(x) => Err(io::Error::new(io::ErrorKind::Other, x)),
+    }
 }
 
 fn main() -> io::Result<()> {
@@ -126,12 +124,12 @@ mod tests {
         assert_cc_positive(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0x0);
         assert_cc_zero(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0xFFFF);
         assert_cc_negative(&mut state);
     }
@@ -146,12 +144,12 @@ mod tests {
         assert_cc_positive(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0x0);
         assert_cc_zero(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0xFFF0);
         assert_cc_negative(&mut state);
     }
@@ -166,12 +164,12 @@ mod tests {
         assert_cc_positive(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0x0);
         assert_cc_zero(&mut state);
 
         state.resume();
-        run(&mut state);
+        run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::R0], 0xFFFF);
         assert_cc_negative(&mut state);
     }

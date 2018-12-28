@@ -3,7 +3,7 @@ use num_traits::FromPrimitive;
 use state::VmState;
 use state::Registers;
 use state::ConditionFlags;
-use util::sign_extend;
+use parser::Instruction;
 use util::binary_add;
 
 #[derive(FromPrimitive)]
@@ -46,65 +46,61 @@ fn update_condition_codes(state: &mut VmState, value: u16) {
     }
 }
 
-pub fn op_add(state: &mut VmState, pc: usize) {
-    let instruction = state.memory()[pc as u16];
-    let dr = Registers::from_u16_or_panic((instruction >> 9) & 0b111);
-    let sr1 = Registers::from_u16_or_panic((instruction >> 6) & 0b111);
+pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
+    let pc = state.registers()[Registers::PC];
+    let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    if ((instruction >> 5) & 0x1) == 0 {
-        let sr2 = Registers::from_u16_or_panic(instruction & 0b111);
-        let result = binary_add(state.registers()[sr1], state.registers()[sr2]);
-        state.registers()[dr] = result;
-        update_condition_codes(state, result);
-    } else {
-        let imm = sign_extend((instruction & 0b11111) as u16, 5);
-        let result = binary_add(state.registers()[sr1], imm);
-        state.registers()[dr] = result;
-        update_condition_codes(state, result);
-    }
-    state.registers()[Registers::PC] += 1;
+    match instruction {
+            Instruction::AddImmediate { dr, sr1, imm5 } => {
+                let sr1_val = state.registers()[sr1];
+                let result = binary_add(sr1_val, imm5);
+                state.registers()[dr] = result;
+                update_condition_codes(state, result);
+            },
+
+            Instruction::AddRegister { dr, sr1, sr2 } => {
+                let sr1_val = state.registers()[sr1];
+                let sr2_val = state.registers()[sr2];
+                let result = binary_add(sr1_val, sr2_val);
+                state.registers()[dr] = result;
+                update_condition_codes(state, result);
+            },
+
+            Instruction::Ld { dr, offset9 } => {
+                let address = binary_add(pc + 1, offset9);
+                let value = state.memory()[address];
+                state.registers()[dr] = value;
+                update_condition_codes(state, value);
+            },
+
+            Instruction::Lea { dr, offset9 } => {
+                let address = binary_add(pc + 1, offset9);
+                state.registers()[dr] = address;
+                update_condition_codes(state, address);
+            },
+
+            Instruction::Trap { trapvect8 } => {
+                op_trap(state, trapvect8);
+            },
+
+            //_ => panic!("Unrecognized opcode {:?} at pc <0x{:x}> ", instruction, pc),
+        }
+
+        state.registers()[Registers::PC] += 1;
+        Ok(())
 }
 
-pub fn op_ld(state: &mut VmState, pc: usize) {
-    let instruction = state.memory()[pc as u16];
-    let dr = Registers::from_u16_or_panic((instruction >> 9) & 0b111);
-    let imm = sign_extend(instruction & 0b111111111, 9);
-    let address = binary_add(state.registers()[Registers::PC] + 1, imm);
-    let value = state.memory()[address];
-    update_condition_codes(state, value);
-    state.registers()[dr] = state.memory()[address];
-    state.registers()[Registers::PC] += 1;
-}
-
-pub fn op_lea(state: &mut VmState, pc: usize) {
-    let instruction = state.memory()[pc as u16];
-    let dr = Registers::from_usize_or_panic(((instruction >> 9) & 0b111) as usize);
-    let imm = sign_extend(instruction & 0b111111111, 9);
-    state.registers()[dr] = ((pc+1) as u16) + imm;
-    let pc = state.registers()[Registers::PC] + 1;
-    state.registers()[Registers::PC] = pc;
-    // TODO: set condition flags!
-
-    // println!("imm <0x{:x}>", imm);
-    // println!("reg <{}> val <0x{:x}>", dr, state.registers[dr]);
-    // println!("value at address <0x{:x}> is <0x{:x}>", state.registers[dr], state.memory[state.registers[dr] as usize]);
-}
-
-pub fn op_trap(state: &mut VmState, pc: usize) {
+pub fn op_trap(state: &mut VmState, trapvect8: u16) {
     // R7 is where we jump to upon completion of the handler. In the current implementation,
     // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
-    //state.registers[Registers::R7 as usize] = (pc+1) as u16;
+    // let pc = state.registers()[Registers::PC];
+    // state.registers()[Registers::R7] = (pc+1) as u16;
 
-    let trap_type = state.memory()[pc as u16] & 0b1111_1111;
-    match trap_type {
+    match trapvect8 {
         0x22 => trap_puts(state),
         0x25 => trap_halt(state),
-        _ => panic!("Unimplemented trap vector <0x{:x}> at pc <0x{:x}>", trap_type, pc),
+        _ => panic!("Unimplemented trap vector <0x{:x}>", trapvect8),
     }
-
-    //state.registers[Registers::PC as usize] = state.registers[Registers::R7 as usize]
-    let pc = state.registers()[Registers::PC] + 1;
-    state.registers()[Registers::PC] = pc;
 }
 
 fn trap_halt(state: &mut VmState) {

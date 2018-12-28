@@ -7,7 +7,7 @@ use std::ops::Range;
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 10;
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive,Debug)]
 pub enum Registers {
     R0 = 0,
     R1,
@@ -22,13 +22,6 @@ pub enum Registers {
 }
 
 impl Registers {
-    pub fn from_usize_or_panic(index: usize) -> Self {
-        match Registers::from_usize(index) {
-            Some(x) => x,
-            None => panic!("Register with usize index <0x{:X}> does not exist", index)
-        }
-    }
-
     pub fn from_u16_or_panic(index: u16) -> Self {
         match Registers::from_u16(index) {
             Some(x) => x,
