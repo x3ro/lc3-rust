@@ -8,6 +8,9 @@ type Result<T> = std::result::Result<T, String>;
 extern crate num_derive;
 extern crate num_traits;
 
+extern crate clap;
+use clap::{Arg, App, SubCommand};
+
 mod state;
 mod opcodes;
 mod util;
@@ -63,8 +66,24 @@ fn run_file(state: &mut VmState, filename: &str, start_pc: u16) -> io::Result<()
 
 fn main() -> io::Result<()> {
     let mut state = MyVmState::new();
+    let matches = App::new("My Super Program")
+        .arg(Arg::with_name("program")
+            .short("p")
+            .long("program")
+            .value_name("FILE")
+            .required(true)
+            .takes_value(true))
+        .arg(Arg::with_name("entry_point")
+            .short("e")
+            .long("entry-point")
+            .takes_value(true))
+        .get_matches();
 
-    match run_file(&mut state, "tests/puts.obj", 0x3000) {
+    let program_file = matches.value_of("program").unwrap();
+    let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
+    let e = u16::from_str_radix(entry_point.trim_left_matches("0x"), 16).unwrap();
+
+    match run_file(&mut state, program_file, e) {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
     }
