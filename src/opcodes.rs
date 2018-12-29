@@ -98,8 +98,6 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             Instruction::Trap { trapvect8 } => {
                 op_trap(state, trapvect8);
             },
-
-            //_ => panic!("Unrecognized opcode {:?} at pc <0x{:x}> ", instruction, pc),
         }
 
         state.registers()[Registers::PC] += 1;
