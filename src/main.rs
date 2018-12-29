@@ -284,6 +284,26 @@ mod tests {
     }
 
     #[test]
+    fn test_and() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/and.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::R2], 0x1200);
+        assert_cc_positive(&mut state);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 0);
+        assert_cc_zero(&mut state);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 15);
+        assert_cc_positive(&mut state);
+    }
+
+    #[test]
     fn test_puts() {
         let mut output = String::new();
         {

@@ -66,6 +66,8 @@ pub enum Instruction {
     JsrRegister { base_r: Registers },
     AddImmediate { dr: Registers, sr1: Registers, imm5: u16 },
     AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
+    AndImmediate { dr: Registers, sr1: Registers, imm5: u16 },
+    AndRegister { dr: Registers, sr1: Registers, sr2: Registers },
     Ld { dr: Registers, offset9: u16 },
     Ldi { dr: Registers, offset9: u16 },
     Lea { dr: Registers, offset9: u16 },
@@ -78,6 +80,7 @@ impl Instruction {
 
         match opcode {
             Opcode::ADD => Ok(Self::from_add(raw)),
+            Opcode::AND => Ok(Self::from_and(raw)),
             Opcode::BR => Ok(Self::from_br(raw)),
             Opcode::JMP => Ok(Self::from_jmp(raw)),
             Opcode::JSR => Ok(Self::from_jsr(raw)),
@@ -99,6 +102,19 @@ impl Instruction {
         } else {
             let sr2 = raw.to_register(0);
             AddRegister { dr, sr1, sr2 }
+        }
+    }
+
+    fn from_and(raw: u16) -> Self {
+        let dr = raw.to_register(9);
+        let sr1 = raw.to_register(6);
+
+        if raw.has_bit(5) {
+            let imm5 = raw.to_immediate(5);
+            AndImmediate { dr, sr1, imm5 }
+        } else {
+            let sr2 = raw.to_register(0);
+            AndRegister { dr, sr1, sr2 }
         }
     }
 
