@@ -62,6 +62,11 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 }
             },
 
+            Instruction::Jmp { base_r } => {
+                // -1 because we increment the PC at the end of execute_next_instruction
+                state.registers()[Registers::PC] = state.registers()[base_r] - 1;
+            },
+
             Instruction::AddImmediate { dr, sr1, imm5 } => {
                 let sr1_val = state.registers()[sr1];
                 let result = binary_add(sr1_val, imm5);
