@@ -67,6 +67,7 @@ pub enum Instruction {
     AddImmediate { dr: Registers, sr1: Registers, imm5: u16 },
     AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
     Ld { dr: Registers, offset9: u16 },
+    Ldi { dr: Registers, offset9: u16 },
     Lea { dr: Registers, offset9: u16 },
     Trap { trapvect8: u16 },
 }
@@ -81,6 +82,7 @@ impl Instruction {
             Opcode::JMP => Ok(Self::from_jmp(raw)),
             Opcode::JSR => Ok(Self::from_jsr(raw)),
             Opcode::LD => Ok(Self::from_ld(raw)),
+            Opcode::LDI => Ok(Self::from_ldi(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
@@ -127,6 +129,12 @@ impl Instruction {
         let dr = raw.to_register(9);
         let offset9 = raw.to_immediate(9);
         Ld { dr, offset9 }
+    }
+
+    fn from_ldi(raw: u16) -> Self {
+        let dr = raw.to_register(9);
+        let offset9 = raw.to_immediate(9);
+        Ldi { dr, offset9 }
     }
 
     fn from_lea(raw: u16) -> Self {

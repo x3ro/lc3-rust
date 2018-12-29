@@ -75,6 +75,9 @@ mod tests {
     use super::*;
     use state::ConditionFlags;
 
+
+    // Test doubles
+
     pub struct TestVmDisplay<'a> {
         pub output: &'a mut String
     }
@@ -84,6 +87,9 @@ mod tests {
             self.output.push(c as char)
         }
     }
+
+
+    // Utility functions
 
     #[inline]
     fn assert_cc_positive(state: &mut VmState) {
@@ -105,6 +111,9 @@ mod tests {
         assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), 0);
         assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), ConditionFlags::Negative as u16);
     }
+
+
+    // Tests
 
     #[test]
     fn test_br() {
@@ -262,6 +271,16 @@ mod tests {
         assert_eq!(state.registers()[Registers::R0], 0x3005);
         assert_eq!(state.registers()[Registers::R1], 0);
         assert_eq!(state.registers()[Registers::R2], 1);
+    }
+
+    #[test]
+    fn test_ldi() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/ldi.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::R0], 42);
+        assert_cc_positive(&mut state);
     }
 
     #[test]
