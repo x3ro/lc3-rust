@@ -4,7 +4,7 @@ use util;
 
 use std::result::Result;
 
-trait BitTools { 
+trait BitTools {
     fn has_bit(&self, index: u8) -> bool;
     fn to_register(&self, lowest_bit_index: u8) -> Registers;
     fn to_immediate(&self, num_bits: u8) -> u16;
@@ -40,7 +40,7 @@ pub enum Instruction {
 impl Instruction {
     pub fn from_raw(raw: u16) -> Result<Self,String> {
         let opcode = Opcode::from_instruction(raw);
-    
+
         match opcode {
             Opcode::BR => Ok(Self::from_br(raw)),
             Opcode::JMP => Ok(Self::from_jmp(raw)),
