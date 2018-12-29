@@ -132,25 +132,23 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             },
 
             Instruction::Trap { trapvect8 } => {
-                op_trap(state, trapvect8);
+                match trapvect8 {
+                    // TODO: Remove these super-hacky VM-handled traps
+                    0x22 => trap_puts(state),
+                    0x25 => trap_halt(state),
+                    x => {
+                        let pc = state.registers()[Registers::PC];
+                        state.registers()[Registers::R7] = pc + 1;
+                        // -1 because we increment the PC at the end of execute_next_instruction
+                        state.registers()[Registers::PC] = state.memory()[trapvect8] - 1;
+                        println!("PC is now 0x{:X}", state.registers()[Registers::PC]);
+                    }
+                }
             },
         }
 
         state.registers()[Registers::PC] += 1;
         Ok(())
-}
-
-pub fn op_trap(state: &mut VmState, trapvect8: u16) {
-    // R7 is where we jump to upon completion of the handler. In the current implementation,
-    // where we handle the traps in the VM, setting this is not necessary, but it's in the spec
-    // let pc = state.registers()[Registers::PC];
-    // state.registers()[Registers::R7] = (pc+1) as u16;
-
-    match trapvect8 {
-        0x22 => trap_puts(state),
-        0x25 => trap_halt(state),
-        _ => panic!("Unimplemented trap vector <0x{:x}>", trapvect8),
-    }
 }
 
 fn trap_halt(state: &mut VmState) {
