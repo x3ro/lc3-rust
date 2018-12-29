@@ -124,6 +124,13 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 state.memory()[addr2] = value;
             },
 
+            Instruction::Str { sr, base_r, offset6 } => {
+                let base_addr = state.registers()[base_r];
+                let addr = binary_add(base_addr, offset6);
+                let value = state.registers()[sr];
+                state.memory()[addr] = value;
+            },
+
             Instruction::Trap { trapvect8 } => {
                 op_trap(state, trapvect8);
             },

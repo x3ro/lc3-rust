@@ -343,6 +343,15 @@ mod tests {
     }
 
     #[test]
+    fn test_str() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/str.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.memory()[0x3004], (-9i16) as u16);
+    }
+
+    #[test]
     fn test_puts() {
         let mut output = String::new();
         {

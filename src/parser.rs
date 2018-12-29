@@ -75,6 +75,7 @@ pub enum Instruction {
     Not { dr: Registers, sr: Registers },
     St { sr: Registers, pc_offset9: u16 },
     Sti { sr: Registers, pc_offset9: u16 },
+    Str { sr: Registers, base_r: Registers, offset6: u16 },
     Trap { trapvect8: u16 },
 }
 
@@ -95,6 +96,7 @@ impl Instruction {
             Opcode::NOT => Ok(Self::from_not(raw)),
             Opcode::ST => Ok(Self::from_st(raw)),
             Opcode::STI => Ok(Self::from_sti(raw)),
+            Opcode::STR => Ok(Self::from_str(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
         }
@@ -190,6 +192,13 @@ impl Instruction {
         let sr = raw.to_register(9);
         let pc_offset9 = raw.to_immediate(9);
         Sti { sr, pc_offset9 }
+    }
+
+    fn from_str(raw: u16) -> Self {
+        let sr = raw.to_register(9);
+        let base_r = raw.to_register(6);
+        let offset6 = raw.to_immediate(6);
+        Str { sr, base_r, offset6 }
     }
 
     fn from_trap(raw: u16) -> Self {
