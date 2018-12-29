@@ -30,6 +30,7 @@ use Instruction::*;
 pub enum Instruction {
     Br { n: bool, z: bool, p: bool, pc_offset9: u16 },
     Jmp { base_r: Registers },
+    Jsr { pc_offset11: u16 },
     AddImmediate { dr: Registers, sr1: Registers, imm5: u16 },
     AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
     Ld { dr: Registers, offset9: u16 },
@@ -44,6 +45,7 @@ impl Instruction {
         match opcode {
             Opcode::BR => Ok(Self::from_br(raw)),
             Opcode::JMP => Ok(Self::from_jmp(raw)),
+            Opcode::JSR => Ok(Self::from_jsr(raw)),
             Opcode::ADD => Ok(Self::from_add(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::LD => Ok(Self::from_ld(raw)),
@@ -63,6 +65,11 @@ impl Instruction {
     fn from_jmp(raw: u16) -> Self {
         let base_r = raw.to_register(6);
         Jmp { base_r }
+    }
+
+    fn from_jsr(raw: u16) -> Self {
+        let pc_offset11 = raw.to_immediate(11);
+        Jsr { pc_offset11 }
     }
 
     fn from_add(raw: u16) -> Self {

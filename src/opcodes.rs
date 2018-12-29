@@ -12,7 +12,7 @@ pub enum Opcode {
     ADD  = 0x1, /* add  */
     LD   = 0x2, /* load */
     ST   = 0x3, /* store */
-    JS   = 0x4, /* jump register */
+    JSR  = 0x4, /* jump register */
     AND  = 0x5, /* bitwise and */
     LDR  = 0x6, /* load register */
     STR  = 0x7, /* store register */
@@ -50,6 +50,8 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
+    // println!("PC<0x{:X}> {:?}", pc, instruction);
+
     match instruction {
             Instruction::Br { n, z, p, pc_offset9 } => {
                 let mem_n: bool = (state.registers()[Registers::PSR] & ConditionFlags::Negative as u16) > 0;
@@ -65,6 +67,11 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             Instruction::Jmp { base_r } => {
                 // -1 because we increment the PC at the end of execute_next_instruction
                 state.registers()[Registers::PC] = state.registers()[base_r] - 1;
+            },
+
+            Instruction::Jsr { pc_offset11 } => {
+                state.registers()[Registers::R7] = state.registers()[Registers::PC] + 1;
+                state.registers()[Registers::PC] += pc_offset11;
             },
 
             Instruction::AddImmediate { dr, sr1, imm5 } => {

@@ -240,6 +240,18 @@ mod tests {
     }
 
     #[test]
+    fn test_jsr() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/jsr.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::PC], 0x3002);
+        assert_eq!(state.registers()[Registers::R7], 0x3001);
+        assert_eq!(state.registers()[Registers::R0], 1);
+        assert_eq!(state.registers()[Registers::R1], 0);
+    }
+
+    #[test]
     fn test_puts() {
         let mut output = String::new();
         {
