@@ -284,6 +284,17 @@ mod tests {
     }
 
     #[test]
+    fn test_ldr() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/ldr.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::R0], 0x3004);
+        assert_eq!(state.registers()[Registers::R1], 0xFFFF);
+        assert_cc_negative(&mut state);
+    }
+
+    #[test]
     fn test_and() {
         let mut state = MyVmState::new();
         let result = run_file(&mut state, "tests/and.obj");

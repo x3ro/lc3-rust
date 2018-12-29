@@ -50,8 +50,6 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 update_condition_codes(state, result);
             },
 
-
-
             Instruction::Br { n, z, p, pc_offset9 } => {
                 let mem_n: bool = (state.registers()[Registers::PSR] & ConditionFlags::Negative as u16) > 0;
                 let mem_z: bool = (state.registers()[Registers::PSR] & ConditionFlags::Zero as u16) > 0;
@@ -90,6 +88,14 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 let address2 = state.memory()[address1];
                 state.registers()[dr] = state.memory()[address2];
                 update_condition_codes(state, address2);
+            },
+
+            Instruction::Ldr { dr, base_r, offset6 } => {
+                let address1 = state.registers()[base_r];
+                let address2 = binary_add(address1, offset6);
+                let value = state.memory()[address2];
+                state.registers()[dr] = state.memory()[address2];
+                update_condition_codes(state, value);
             },
 
             Instruction::Lea { dr, offset9 } => {

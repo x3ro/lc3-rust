@@ -70,6 +70,7 @@ pub enum Instruction {
     AndRegister { dr: Registers, sr1: Registers, sr2: Registers },
     Ld { dr: Registers, offset9: u16 },
     Ldi { dr: Registers, offset9: u16 },
+    Ldr { dr: Registers, base_r: Registers, offset6: u16 },
     Lea { dr: Registers, offset9: u16 },
     Trap { trapvect8: u16 },
 }
@@ -86,6 +87,7 @@ impl Instruction {
             Opcode::JSR => Ok(Self::from_jsr(raw)),
             Opcode::LD => Ok(Self::from_ld(raw)),
             Opcode::LDI => Ok(Self::from_ldi(raw)),
+            Opcode::LDR => Ok(Self::from_ldr(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
@@ -151,6 +153,13 @@ impl Instruction {
         let dr = raw.to_register(9);
         let offset9 = raw.to_immediate(9);
         Ldi { dr, offset9 }
+    }
+
+    fn from_ldr(raw: u16) -> Self {
+        let dr = raw.to_register(9);
+        let base_r = raw.to_register(6);
+        let offset6 = raw.to_immediate(6);
+        Ldr { dr, base_r, offset6 }
     }
 
     fn from_lea(raw: u16) -> Self {
