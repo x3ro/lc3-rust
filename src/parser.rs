@@ -1,4 +1,5 @@
-use opcodes::Opcode;
+use num_traits::FromPrimitive;
+
 use state::Registers;
 use util;
 
@@ -22,6 +23,37 @@ impl BitTools for u16 {
     fn to_immediate(&self, num_bits: u8) -> u16 {
         let imm = self & (1 << num_bits) - 1;
         util::sign_extend(imm, num_bits as u16)
+    }
+}
+
+#[derive(FromPrimitive)]
+pub enum Opcode {
+    BR   = 0x0, /* branch */
+    ADD  = 0x1, /* add  */
+    LD   = 0x2, /* load */
+    ST   = 0x3, /* store */
+    JSR  = 0x4, /* jump register */
+    AND  = 0x5, /* bitwise and */
+    LDR  = 0x6, /* load register */
+    STR  = 0x7, /* store register */
+    RTI  = 0x8, /* unused */
+    NOT  = 0x9, /* bitwise not */
+    LDI  = 0xA, /* load indirect */
+    STI  = 0xB, /* store indirect */
+    JMP  = 0xC, /* jump */
+    RES  = 0xD, /* reserved (unused) */
+    LEA  = 0xE, /* load effective address */
+    TRAP = 0xF, /* execute trap */
+}
+
+impl Opcode {
+    pub fn from_instruction(instruction: u16) -> Self {
+        // The upper three bits of an instruction are the opcode
+        let opcode = instruction >> 12;
+        match Opcode::from_u16(opcode) {
+            Some(x) => x,
+            None => panic!("Could not instantiate opcode from <0x{:X}>", opcode)
+        }
     }
 }
 
