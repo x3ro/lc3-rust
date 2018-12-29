@@ -86,8 +86,9 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             Instruction::Ldi { dr, offset9 } => {
                 let address1 = binary_add(pc + 1, offset9);
                 let address2 = state.memory()[address1];
-                state.registers()[dr] = state.memory()[address2];
-                update_condition_codes(state, address2);
+                let result = state.memory()[address2];
+                state.registers()[dr] = result;
+                update_condition_codes(state, result);
             },
 
             Instruction::Ldr { dr, base_r, offset6 } => {

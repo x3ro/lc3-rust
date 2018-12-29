@@ -279,8 +279,8 @@ mod tests {
         let result = run_file(&mut state, "tests/ldi.obj");
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
-        assert_eq!(state.registers()[Registers::R0], 42);
-        assert_cc_positive(&mut state);
+        assert_eq!(state.registers()[Registers::R0], 0xFFFF);
+        assert_cc_negative(&mut state);
     }
 
     #[test]
