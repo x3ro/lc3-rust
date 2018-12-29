@@ -240,15 +240,28 @@ mod tests {
     }
 
     #[test]
-    fn test_jsr() {
+    fn test_jsr_immediate() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/jsr.obj");
+        let result = run_file(&mut state, "tests/jsr_immediate.obj");
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3002);
         assert_eq!(state.registers()[Registers::R7], 0x3001);
         assert_eq!(state.registers()[Registers::R0], 1);
         assert_eq!(state.registers()[Registers::R1], 0);
+    }
+
+    #[test]
+    fn test_jsr_register() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/jsr_register.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::PC], 0x3003);
+        assert_eq!(state.registers()[Registers::R7], 0x3002);
+        assert_eq!(state.registers()[Registers::R0], 0x3005);
+        assert_eq!(state.registers()[Registers::R1], 0);
+        assert_eq!(state.registers()[Registers::R2], 1);
     }
 
     #[test]

@@ -51,9 +51,14 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 state.registers()[Registers::PC] = state.registers()[base_r] - 1;
             },
 
-            Instruction::Jsr { pc_offset11 } => {
+            Instruction::JsrImmediate { pc_offset11 } => {
                 state.registers()[Registers::R7] = state.registers()[Registers::PC] + 1;
                 state.registers()[Registers::PC] += pc_offset11;
+            },
+
+            Instruction::JsrRegister { base_r } => {
+                state.registers()[Registers::R7] = state.registers()[Registers::PC] + 1;
+                state.registers()[Registers::PC] = state.registers()[base_r] - 1;
             },
 
             Instruction::Ld { dr, offset9 } => {
