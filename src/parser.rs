@@ -43,14 +43,27 @@ impl Instruction {
         let opcode = Opcode::from_instruction(raw);
 
         match opcode {
+            Opcode::ADD => Ok(Self::from_add(raw)),
             Opcode::BR => Ok(Self::from_br(raw)),
             Opcode::JMP => Ok(Self::from_jmp(raw)),
             Opcode::JSR => Ok(Self::from_jsr(raw)),
-            Opcode::ADD => Ok(Self::from_add(raw)),
-            Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::LD => Ok(Self::from_ld(raw)),
+            Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
+        }
+    }
+
+    fn from_add(raw: u16) -> Self {
+        let dr = raw.to_register(9);
+        let sr1 = raw.to_register(6);
+
+        if raw.has_bit(5) {
+            let imm5 = raw.to_immediate(5);
+            AddImmediate { dr, sr1, imm5 }
+        } else {
+            let sr2 = raw.to_register(0);
+            AddRegister { dr, sr1, sr2 }
         }
     }
 
@@ -72,29 +85,16 @@ impl Instruction {
         Jsr { pc_offset11 }
     }
 
-    fn from_add(raw: u16) -> Self {
+    fn from_ld(raw: u16) -> Self {
         let dr = raw.to_register(9);
-        let sr1 = raw.to_register(6);
-
-        if raw.has_bit(5) {
-            let imm5 = raw.to_immediate(5);
-            AddImmediate { dr, sr1, imm5 }
-        } else {
-            let sr2 = raw.to_register(0);
-            AddRegister { dr, sr1, sr2 }
-        }
+        let offset9 = raw.to_immediate(9);
+        Ld { dr, offset9 }
     }
 
     fn from_lea(raw: u16) -> Self {
         let dr = raw.to_register(9);
         let offset9 = raw.to_immediate(9);
         Lea { dr, offset9 }
-    }
-
-    fn from_ld(raw: u16) -> Self {
-        let dr = raw.to_register(9);
-        let offset9 = raw.to_immediate(9);
-        Ld { dr, offset9 }
     }
 
     fn from_trap(raw: u16) -> Self {

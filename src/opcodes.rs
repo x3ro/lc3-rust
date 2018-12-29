@@ -53,6 +53,21 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
     // println!("PC<0x{:X}> {:?}", pc, instruction);
 
     match instruction {
+            Instruction::AddRegister { dr, sr1, sr2 } => {
+                let sr1_val = state.registers()[sr1];
+                let sr2_val = state.registers()[sr2];
+                let result = binary_add(sr1_val, sr2_val);
+                state.registers()[dr] = result;
+                update_condition_codes(state, result);
+            },
+
+            Instruction::AddImmediate { dr, sr1, imm5 } => {
+                let sr1_val = state.registers()[sr1];
+                let result = binary_add(sr1_val, imm5);
+                state.registers()[dr] = result;
+                update_condition_codes(state, result);
+            },
+
             Instruction::Br { n, z, p, pc_offset9 } => {
                 let mem_n: bool = (state.registers()[Registers::PSR] & ConditionFlags::Negative as u16) > 0;
                 let mem_z: bool = (state.registers()[Registers::PSR] & ConditionFlags::Zero as u16) > 0;
@@ -72,21 +87,6 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             Instruction::Jsr { pc_offset11 } => {
                 state.registers()[Registers::R7] = state.registers()[Registers::PC] + 1;
                 state.registers()[Registers::PC] += pc_offset11;
-            },
-
-            Instruction::AddImmediate { dr, sr1, imm5 } => {
-                let sr1_val = state.registers()[sr1];
-                let result = binary_add(sr1_val, imm5);
-                state.registers()[dr] = result;
-                update_condition_codes(state, result);
-            },
-
-            Instruction::AddRegister { dr, sr1, sr2 } => {
-                let sr1_val = state.registers()[sr1];
-                let sr2_val = state.registers()[sr2];
-                let result = binary_add(sr1_val, sr2_val);
-                state.registers()[dr] = result;
-                update_condition_codes(state, result);
             },
 
             Instruction::Ld { dr, offset9 } => {
