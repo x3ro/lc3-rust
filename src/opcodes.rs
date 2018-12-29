@@ -105,6 +105,12 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 update_condition_codes(state, address);
             },
 
+            Instruction::Not { dr, sr } => {
+                let value = !state.registers()[sr];
+                state.registers()[dr] = value;
+                update_condition_codes(state, value);
+            },
+
             Instruction::Trap { trapvect8 } => {
                 op_trap(state, trapvect8);
             },

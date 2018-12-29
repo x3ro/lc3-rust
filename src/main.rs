@@ -315,6 +315,16 @@ mod tests {
     }
 
     #[test]
+    fn test_not() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/not.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::R1], 0xEDCB);
+        assert_cc_negative(&mut state);
+    }
+
+    #[test]
     fn test_puts() {
         let mut output = String::new();
         {

@@ -72,6 +72,7 @@ pub enum Instruction {
     Ldi { dr: Registers, offset9: u16 },
     Ldr { dr: Registers, base_r: Registers, offset6: u16 },
     Lea { dr: Registers, offset9: u16 },
+    Not { dr: Registers, sr: Registers },
     Trap { trapvect8: u16 },
 }
 
@@ -89,6 +90,7 @@ impl Instruction {
             Opcode::LDI => Ok(Self::from_ldi(raw)),
             Opcode::LDR => Ok(Self::from_ldr(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
+            Opcode::NOT => Ok(Self::from_not(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
         }
@@ -166,6 +168,12 @@ impl Instruction {
         let dr = raw.to_register(9);
         let offset9 = raw.to_immediate(9);
         Lea { dr, offset9 }
+    }
+
+    fn from_not(raw: u16) -> Self {
+        let dr = raw.to_register(9);
+        let sr = raw.to_register(6);
+        Not { dr, sr }
     }
 
     fn from_trap(raw: u16) -> Self {
