@@ -111,6 +111,12 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 update_condition_codes(state, value);
             },
 
+            Instruction::St { sr, pc_offset9 } => {
+                let addr = binary_add(pc + 1, pc_offset9);
+                let value = state.registers()[sr];
+                state.memory()[addr] = value;
+            },
+
             Instruction::Trap { trapvect8 } => {
                 op_trap(state, trapvect8);
             },
