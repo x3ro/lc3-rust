@@ -331,7 +331,15 @@ mod tests {
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3003], (-7i16) as u16);
-        assert_cc_negative(&mut state);
+    }
+
+    #[test]
+    fn test_sti() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/sti.obj");
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.memory()[0x3003], (-8i16) as u16);
     }
 
     #[test]

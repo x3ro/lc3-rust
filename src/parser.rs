@@ -74,6 +74,7 @@ pub enum Instruction {
     Lea { dr: Registers, offset9: u16 },
     Not { dr: Registers, sr: Registers },
     St { sr: Registers, pc_offset9: u16 },
+    Sti { sr: Registers, pc_offset9: u16 },
     Trap { trapvect8: u16 },
 }
 
@@ -93,6 +94,7 @@ impl Instruction {
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::NOT => Ok(Self::from_not(raw)),
             Opcode::ST => Ok(Self::from_st(raw)),
+            Opcode::STI => Ok(Self::from_sti(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
         }
@@ -182,6 +184,12 @@ impl Instruction {
         let sr = raw.to_register(9);
         let pc_offset9 = raw.to_immediate(9);
         St { sr, pc_offset9 }
+    }
+
+    fn from_sti(raw: u16) -> Self {
+        let sr = raw.to_register(9);
+        let pc_offset9 = raw.to_immediate(9);
+        Sti { sr, pc_offset9 }
     }
 
     fn from_trap(raw: u16) -> Self {
