@@ -28,6 +28,7 @@ impl BitTools for u16 {
 use Instruction::*;
 #[derive(Debug)]
 pub enum Instruction {
+    Br { n: bool, z: bool, p: bool, pc_offset9: u16 },
     AddImmediate { dr: Registers, sr1: Registers, imm5: u16 },
     AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
     Ld { dr: Registers, offset9: u16 },
@@ -40,12 +41,21 @@ impl Instruction {
         let opcode = Opcode::from_instruction(raw);
     
         match opcode {
+            Opcode::BR => Ok(Self::from_br(raw)),
             Opcode::ADD => Ok(Self::from_add(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::LD => Ok(Self::from_ld(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
             _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
         }
+    }
+
+    fn from_br(raw: u16) -> Self {
+        let n = raw.has_bit(11);
+        let z = raw.has_bit(10);
+        let p = raw.has_bit(9);
+        let pc_offset9 = raw.to_immediate(9);
+        Br { n, z, p, pc_offset9 }
     }
 
     fn from_add(raw: u16) -> Self {

@@ -51,6 +51,17 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
     match instruction {
+            Instruction::Br { n, z, p, pc_offset9 } => {
+                let mem_n: bool = (state.registers()[Registers::PSR] & ConditionFlags::Negative as u16) > 0;
+                let mem_z: bool = (state.registers()[Registers::PSR] & ConditionFlags::Zero as u16) > 0;
+                let mem_p: bool = (state.registers()[Registers::PSR] & ConditionFlags::Positive as u16) > 0;
+
+                // If n, z, and p are set we want to unconditionally branch
+                if (n && z && p) || (n && mem_n) || (z && mem_z) || (p && mem_p) {
+                    state.registers()[Registers::PC] += pc_offset9
+                }
+            },
+
             Instruction::AddImmediate { dr, sr1, imm5 } => {
                 let sr1_val = state.registers()[sr1];
                 let result = binary_add(sr1_val, imm5);

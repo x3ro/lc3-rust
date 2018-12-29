@@ -107,6 +107,61 @@ mod tests {
     }
 
     #[test]
+    fn test_br() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/br.obj");
+        assert!(result.is_ok());
+        assert_eq!(state.registers()[Registers::R2], 1);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 2);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 3);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 4);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 5);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 6);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 7);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 8);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 9);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 10);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 11);
+
+        state.resume();
+        run(&mut state).unwrap();
+        assert_eq!(state.registers()[Registers::R2], 12);
+
+        // This is only incremented on wrong branch, so should remain zero
+        assert_eq!(state.registers()[Registers::R1], 0x0);
+    }
+
+    #[test]
     fn test_lea() {
         let mut state = MyVmState::new();
         let result = run_file(&mut state, "tests/lea.obj");
