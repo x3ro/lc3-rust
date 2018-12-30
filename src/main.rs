@@ -11,9 +11,10 @@ extern crate num_traits;
 extern crate clap;
 use clap::{Arg, App, SubCommand};
 
+#[macro_use]
+mod util;
 mod state;
 mod opcodes;
-mod util;
 mod parser;
 
 use state::VmState;
@@ -40,7 +41,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     // The first two bytes of the object file indicate where to load the program
     let orig = data[0];
     let program = &data[1..];
-    eprintln!("Loaded <{}> at <0x{:x}>", filename, orig);
+    debug!("Loaded <{}> at <0x{:x}>", filename, orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
     state.memory()[memory_area].copy_from_slice(program);

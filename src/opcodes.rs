@@ -4,6 +4,8 @@ use state::ConditionFlags;
 use parser::Instruction;
 use util::binary_add;
 
+
+
 fn update_condition_codes(state: &mut VmState, value: u16) {
     state.registers()[Registers::PSR] &= 0b1111_1111_1111_1000;
     match value as i16 {
@@ -17,7 +19,7 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    // println!("PC<0x{:X}> {:?}", pc, instruction);
+    debug!("PC<0x{:X}> {:?}", pc, instruction);
 
     match instruction {
             Instruction::AddRegister { dr, sr1, sr2 } => {

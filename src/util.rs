@@ -1,5 +1,5 @@
 pub fn sign_extend(x: u16, msb: u16) -> u16 {
-    // Left-pads `x` with the bit value at the bit-position indicated by `msb`. 
+    // Left-pads `x` with the bit value at the bit-position indicated by `msb`.
     if (x >> (msb - 1)) == 0 {
         return x;
     }
@@ -8,6 +8,12 @@ pub fn sign_extend(x: u16, msb: u16) -> u16 {
 
 pub fn binary_add(left: u16, right: u16) -> u16 {
     ((left as i16) + (right as i16)) as u16
+}
+
+macro_rules! debug {
+    ($($arg:tt)*) => ({
+        eprintln!("\x1b[0;33m -- {}\x1b[0m", format_args!($($arg)*));
+    })
 }
 
 #[cfg(test)]
