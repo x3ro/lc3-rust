@@ -138,6 +138,13 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 match trapvect8 {
                     // TODO: Remove these super-hacky VM-handled traps
                     0x22 => trap_puts(state),
+                    // Hacky halt TRAP catch to make writing test cases easier, i.e. not
+                    // having to load HALT routine code for every test-case, and being
+                    // able to observe condition codes / register states just before the HALT
+                    // TODO: Think of a better way to handle this
+                    0x25 => {
+                        state.memory()[0xFFFE] = 0;
+                    },
                     _ => {
                         let pc = state.registers()[Registers::PC];
                         state.registers()[Registers::R7] = pc + 1;

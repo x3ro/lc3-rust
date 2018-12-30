@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_br() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/br.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/br.obj"), 0x3000);
         assert!(result.is_ok());
         assert_eq!(state.registers()[Registers::R2], 1);
 
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn test_lea() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/lea.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/lea.obj"), 0x3000);
         assert!(result.is_ok());
         assert_eq!(state.registers()[Registers::R0], 0x3002);
     }
@@ -205,7 +205,7 @@ mod tests {
     #[test]
     fn test_add_immediate() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/add_immediate.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/add_immediate.obj"), 0x3000);
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x7);
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn test_add_register() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/add_register.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/add_register.obj"), 0x3000);
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x10);
@@ -245,7 +245,7 @@ mod tests {
     #[test]
     fn test_ld() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/ld.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/ld.obj"), 0x3000);
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x4242);
@@ -265,7 +265,7 @@ mod tests {
     #[test]
     fn test_jmp() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/jmp.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/jmp.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3005);
@@ -275,11 +275,10 @@ mod tests {
     #[test]
     fn test_jsr_immediate() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/jsr_immediate.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/jsr_immediate.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3002);
-        assert_eq!(state.registers()[Registers::R7], 0x3001);
         assert_eq!(state.registers()[Registers::R0], 1);
         assert_eq!(state.registers()[Registers::R1], 0);
     }
@@ -287,7 +286,7 @@ mod tests {
     #[test]
     fn test_jsr_register() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/jsr_register.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/jsr_register.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3003);
@@ -300,7 +299,7 @@ mod tests {
     #[test]
     fn test_ldi() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/ldi.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/ldi.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 0xFFFF);
@@ -310,7 +309,7 @@ mod tests {
     #[test]
     fn test_ldr() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/ldr.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/ldr.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 0x3004);
@@ -321,7 +320,7 @@ mod tests {
     #[test]
     fn test_and() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/and.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/and.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R2], 0x1200);
@@ -341,7 +340,7 @@ mod tests {
     #[test]
     fn test_not() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/not.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/not.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R1], 0xEDCB);
@@ -351,7 +350,7 @@ mod tests {
     #[test]
     fn test_st() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/st.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/st.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3003], (-7i16) as u16);
@@ -360,7 +359,7 @@ mod tests {
     #[test]
     fn test_sti() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/sti.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/sti.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3003], (-8i16) as u16);
@@ -369,7 +368,7 @@ mod tests {
     #[test]
     fn test_str() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/str.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/str.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3004], (-9i16) as u16);
@@ -378,7 +377,7 @@ mod tests {
     #[test]
     fn test_trap() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/trap.obj", 0x200);
+        let result = run_file(&mut state, vec!("tests/trap.obj"), 0x200);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 15);
@@ -387,7 +386,7 @@ mod tests {
     #[test]
     fn test_br_backwards() {
         let mut state = MyVmState::new();
-        let result = run_file(&mut state, "tests/br_backwards.obj", 0x3000);
+        let result = run_file(&mut state, vec!("tests/br_backwards.obj"), 0x3000);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 10);
@@ -402,9 +401,9 @@ mod tests {
             };
 
             let mut state = MyVmState::new_with_display(Box::new(d));
-            let result = run_file(&mut state, "tests/puts.obj", 0x3000);
+            let result = run_file(&mut state, vec!("tests/puts.obj"), 0x3000);
             assert!(result.is_ok());
         }
-        assert_eq!("Hello World!", &mut output);
+        assert_eq!("Hello World!\n", &mut output);
     }
 }
