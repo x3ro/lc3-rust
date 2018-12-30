@@ -3,9 +3,10 @@ use num_traits::FromPrimitive;
 use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
+use std::sync::mpsc::Receiver;
 
 const MEM_SIZE: usize = 65535;
-const REGISTER_COUNT: usize = 10;
+const REGISTER_COUNT: usize = 12;
 
 #[derive(FromPrimitive,Debug)]
 pub enum Registers {
@@ -17,8 +18,17 @@ pub enum Registers {
     R5,
     R6,
     R7,
+
+    // This is where the internal registers start, i.e. the ones
+    // that should not be accessible from the code running in the
+    // VM. For convenience, they are currently defined in the same
+    // enum as the general purpose registers.
+    // TODO: evaluate whether a separation of internal / external
+    // registers makes sense
     PC,
     PSR,
+    SSP,
+    USP,
 }
 
 impl Registers {
@@ -104,6 +114,7 @@ pub trait VmState {
     fn display(&mut self) -> &mut VmDisplay;
     fn increment_pc(&mut self);
     fn resume(&mut self);
+    fn interrupt_channel(&mut self) -> &Receiver<u16>;
 }
 
 pub struct MyVmState<'a> {
@@ -112,26 +123,41 @@ pub struct MyVmState<'a> {
     pub display: Box<VmDisplay + 'a>,
     pub running: bool,
     pub error: Option<String>,
+    pub interrupt_channel: Receiver<u16>,
 }
 
 impl<'a> MyVmState<'a> {
-    pub fn new() -> Self {
+    pub fn new(interrupt_channel: Receiver<u16>) -> Self {
         return MyVmState::new_with_display(
-            Box::new(DefaultVmDisplay{})
+            Box::new(DefaultVmDisplay{}),
+            interrupt_channel
         );
     }
 
-    pub fn new_with_display(d: Box<VmDisplay + 'a>) -> Self {
+    pub fn new_with_display(d: Box<VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
         let mut x = Self {
             memory: VmMemory{memory: [0; MEM_SIZE]},
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
             display: d,
             error: None,
+            interrupt_channel: interrupt_channel,
         };
+
         // Highest bit of the machine control register MCR indicates
         // whether or not we're running.
         x.memory()[0xFFFE] = 0x8000;
+
+        // The supervisor stack starts at the high-end of the operating
+        // system memory segment. This is, as far as I can see, not
+        // explicitly defined in the LC3 ISA, but it seems to be implicitly
+        // assumed that the internal SSP register is initialized, and since
+        // this is not possible from code running inside the VM it needs to
+        // happen here.
+        // Supervisor stack base is 0x3000, the topmost value of the stack
+        // is stored at 0x2FFF (push -> mem[SSP-1] = val)
+        x.registers()[Registers::SSP] = 0x3000;
+
         return x;
     }
 }
@@ -162,5 +188,9 @@ impl<'a> VmState for MyVmState<'a> {
 
     fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
+    }
+
+    fn interrupt_channel(&mut self) -> &Receiver<u16> {
+        &self.interrupt_channel
     }
 }

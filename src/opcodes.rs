@@ -16,6 +16,34 @@ fn update_condition_codes(state: &mut VmState, value: u16) {
 }
 
 pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
+    let interrupt = state.interrupt_channel().try_recv().ok();
+
+    // TODO: don't start an interrupt when inside an interrupt
+    if interrupt.is_some() {
+
+        // The processor sets the privilege mode to Supervisor mode (PSR[15] = 0)
+        state.registers()[Registers::PSR] |= 0b1000_0000_0000_0000;
+
+        // (?) The processor sets the priority level to PL4, the priority level of the interrupting device (PSR[10:8] = 100)
+
+        // The PSR and PC of the interrupted process are pushed onto the Supervisor Stack.
+        let ssp = state.registers()[Registers::SSP];
+        state.memory()[ssp-1] = state.registers()[Registers::PSR];
+        state.memory()[ssp-2] = state.registers()[Registers::PC];
+
+        // R6 is loaded with the Supervisor Stack Pointer (SSP) if it does not already contain the SSP.
+        state.registers()[Registers::R6] = ssp - 2; // -2 because we just pushed PSR and PC
+
+        // Expand the vector to the corresponding 16-bit address in the interrupt vector table
+        // The PC is loaded with the contents of memory at that address
+        let interrupt_table_addr = 0x100 + interrupt.unwrap();
+        let routine_addr = state.memory()[interrupt_table_addr];
+        state.registers()[Registers::PC] = routine_addr;
+
+        debug!("Interrupt vector <0x{:X}> pointing to addr <0x{:X}>", interrupt.unwrap(), routine_addr);
+        return Ok(())
+    }
+
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
@@ -112,6 +140,23 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 let value = !state.registers()[sr];
                 state.registers()[dr] = value;
                 update_condition_codes(state, value);
+            },
+
+            Instruction::Rti { } => {
+                let psr = state.registers()[Registers::PSR];
+                if (psr & 0b1000_0000_0000_0000) == 0 {
+                    unimplemented!("This should yield a privilege exception");
+                }
+
+                let ssp = state.registers()[Registers::R6];
+                let pc = state.memory()[ssp];
+                let psr = state.memory()[ssp+1];
+                let usp = state.registers()[Registers::USP];
+
+                // -1 because we increment the PC at the end of execute_next_instruction
+                state.registers()[Registers::PC] = pc - 1;
+                state.registers()[Registers::PSR] = psr;
+                state.registers()[Registers::R6] = usp;
             },
 
             Instruction::St { sr, pc_offset9 } => {

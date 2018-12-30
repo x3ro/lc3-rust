@@ -1,3 +1,4 @@
+// TODO: rename to decoder (in the fashion of FETCH -> DECODE -> ...)
 use num_traits::FromPrimitive;
 
 use state::Registers;
@@ -73,6 +74,7 @@ pub enum Instruction {
     Ldr { dr: Registers, base_r: Registers, offset6: u16 },
     Lea { dr: Registers, offset9: u16 },
     Not { dr: Registers, sr: Registers },
+    Rti { },
     St { sr: Registers, pc_offset9: u16 },
     Sti { sr: Registers, pc_offset9: u16 },
     Str { sr: Registers, base_r: Registers, offset6: u16 },
@@ -94,6 +96,7 @@ impl Instruction {
             Opcode::LDR => Ok(Self::from_ldr(raw)),
             Opcode::LEA => Ok(Self::from_lea(raw)),
             Opcode::NOT => Ok(Self::from_not(raw)),
+            Opcode::RTI => Ok(Rti {}),
             Opcode::ST => Ok(Self::from_st(raw)),
             Opcode::STI => Ok(Self::from_sti(raw)),
             Opcode::STR => Ok(Self::from_str(raw)),
