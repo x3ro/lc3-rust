@@ -150,10 +150,6 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
         Ok(())
 }
 
-fn trap_halt(state: &mut VmState) {
-    state.halt()
-}
-
 fn trap_puts(state: &mut VmState) {
     let mut start = state.registers()[Registers::R0];
     while state.memory()[start] != 0 {

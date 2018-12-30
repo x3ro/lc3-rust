@@ -98,7 +98,6 @@ impl VmDisplay for DefaultVmDisplay {
 }
 
 pub trait VmState {
-    fn halt(&mut self);
     fn running(&mut self) -> bool;
     fn memory(&mut self) -> &mut VmMemory;
     fn registers(&mut self) -> &mut VmRegisters;
@@ -138,10 +137,6 @@ impl<'a> MyVmState<'a> {
 }
 
 impl<'a> VmState for MyVmState<'a> {
-    fn halt(&mut self) {
-        self.running = false
-    }
-
     // If the VM is halted, this was caused by a HALT trap
     // We need to increment the PC to resume, otherwise the
     // VM would simply execute HALT again
