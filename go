@@ -36,7 +36,7 @@ function task_assemble_tests {
 
 function cmd_test {
     task_assemble_tests
-    cargo test
+    cargo test "$@"
 }
 
 function cmd_usage {
@@ -49,6 +49,7 @@ ensure_lc3_tools
 command=""
 if (( $# > 0 )); then
     command="${1}"
+    shift
 fi
 
 case "${command}" in
