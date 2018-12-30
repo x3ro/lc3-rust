@@ -380,6 +380,15 @@ mod tests {
     }
 
     #[test]
+    fn test_br_backwards() {
+        let mut state = MyVmState::new();
+        let result = run_file(&mut state, "tests/br_backwards.obj", 0x3000);
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+
+        assert_eq!(state.registers()[Registers::R0], 10);
+    }
+
+    #[test]
     fn test_puts() {
         let mut output = String::new();
         {

@@ -57,7 +57,8 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
 
                 // If n, z, and p are set we want to unconditionally branch
                 if (n && z && p) || (n && mem_n) || (z && mem_z) || (p && mem_p) {
-                    state.registers()[Registers::PC] += pc_offset9
+                    let pc = state.registers()[Registers::PC];
+                    state.registers()[Registers::PC] = binary_add(pc, pc_offset9);
                 }
             },
 
