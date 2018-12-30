@@ -28,10 +28,14 @@ function ensure_lc3_tools {
     fi
 }
 
-function cmd_test {
+function task_assemble_tests {
     for asm_file in $SCRIPT_DIR/tests/*.asm; do
         ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
     done
+}
+
+function cmd_test {
+    task_assemble_tests
     cargo test
 }
 
@@ -49,5 +53,6 @@ fi
 
 case "${command}" in
     test) cmd_test "$@" ;;
+    assemble-tests) task_assemble_tests "$@" ;;
     *) cmd_usage
 esac
