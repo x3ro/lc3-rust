@@ -40,7 +40,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     // The first two bytes of the object file indicate where to load the program
     let orig = data[0];
     let program = &data[1..];
-    println!("Loaded object file at <0x{:x}>", orig);
+    eprintln!("Loaded <{}> at <0x{:x}>", filename, orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
     state.memory()[memory_area].copy_from_slice(program);
@@ -55,8 +55,11 @@ fn run(state: &mut VmState) -> Result<()> {
     Ok(())
 }
 
-fn run_file(state: &mut VmState, filename: &str, start_pc: u16) -> io::Result<()> {
-    load_object_file(filename, state)?;
+fn run_file(state: &mut VmState, filenames: Vec<&str>, start_pc: u16) -> io::Result<()> {
+    for filename in filenames {
+        load_object_file(filename, state)?;
+    }
+
     state.registers()[Registers::PC] = start_pc;
     match run(state) {
         Ok(x) => Ok(x),
@@ -67,10 +70,11 @@ fn run_file(state: &mut VmState, filename: &str, start_pc: u16) -> io::Result<()
 fn main() -> io::Result<()> {
     let mut state = MyVmState::new();
     let matches = App::new("My Super Program")
-        .arg(Arg::with_name("program")
+        .arg(Arg::with_name("programs")
             .short("p")
             .long("program")
             .value_name("FILE")
+            .multiple(true)
             .required(true)
             .takes_value(true))
         .arg(Arg::with_name("entry_point")
@@ -79,11 +83,11 @@ fn main() -> io::Result<()> {
             .takes_value(true))
         .get_matches();
 
-    let program_file = matches.value_of("program").unwrap();
+    let filenames: Vec<_> = matches.values_of("programs").unwrap().collect();
     let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
     let e = u16::from_str_radix(entry_point.trim_left_matches("0x"), 16).unwrap();
 
-    match run_file(&mut state, program_file, e) {
+    match run_file(&mut state, filenames, e) {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
     }
