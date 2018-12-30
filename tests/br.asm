@@ -3,10 +3,10 @@
     ; R1 holds the number of failed branches, i.e. non of the ADDs to R1 should ever be executed
     ; R2 holds the number of correct branches, to make sure we executed the entire file
 
-    ; Positive branch 
+    ; Positive branch
     LD R0, ZERO
     ADD R0, R0, #1 ; = 1, Positive condition should be set
-    BRp SKIP_P 
+    BRp SKIP_P
     ADD R1, R1, #1 ; This should be skipped
 SKIP_P
     ADD R2, R2, #1 ; 1
@@ -24,7 +24,7 @@ SKIP_Z
     ; Negative branch
     LD R0, ZERO
     ADD R0, R0, #-1 ; = -1, negative condition should be set
-    BRn SKIP_N          
+    BRn SKIP_N
     ADD R1, R1, #1 ; This should be skipped
 SKIP_N
     ADD R2, R2, #1 ; 3
