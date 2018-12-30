@@ -136,13 +136,11 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 match trapvect8 {
                     // TODO: Remove these super-hacky VM-handled traps
                     0x22 => trap_puts(state),
-                    0x25 => trap_halt(state),
-                    x => {
+                    _ => {
                         let pc = state.registers()[Registers::PC];
                         state.registers()[Registers::R7] = pc + 1;
                         // -1 because we increment the PC at the end of execute_next_instruction
                         state.registers()[Registers::PC] = state.memory()[trapvect8] - 1;
-                        println!("PC is now 0x{:X}", state.registers()[Registers::PC]);
                     }
                 }
             },

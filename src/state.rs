@@ -99,7 +99,7 @@ impl VmDisplay for DefaultVmDisplay {
 
 pub trait VmState {
     fn halt(&mut self);
-    fn running(&self) -> bool;
+    fn running(&mut self) -> bool;
     fn memory(&mut self) -> &mut VmMemory;
     fn registers(&mut self) -> &mut VmRegisters;
     fn display(&mut self) -> &mut VmDisplay;
@@ -117,23 +117,23 @@ pub struct MyVmState<'a> {
 
 impl<'a> MyVmState<'a> {
     pub fn new() -> Self {
-        return Self {
-            memory: VmMemory{memory: [0; MEM_SIZE]},
-            registers: VmRegisters {registers: [0; REGISTER_COUNT]},
-            running: true,
-            display: Box::new(DefaultVmDisplay{}),
-            error: None,
-        };
+        return MyVmState::new_with_display(
+            Box::new(DefaultVmDisplay{})
+        );
     }
 
     pub fn new_with_display(d: Box<VmDisplay + 'a>) -> Self {
-        return Self {
+        let mut x = Self {
             memory: VmMemory{memory: [0; MEM_SIZE]},
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
             display: d,
             error: None,
         };
+        // Highest bit of the machine control register MCR indicates
+        // whether or not we're running.
+        x.memory()[0xFFFE] = 0x8000;
+        return x;
     }
 }
 
@@ -146,11 +146,11 @@ impl<'a> VmState for MyVmState<'a> {
     // We need to increment the PC to resume, otherwise the
     // VM would simply execute HALT again
     fn resume(&mut self) {
-        self.running = true
+        self.memory()[0xFFFE] |= 0x8000
     }
 
-    fn running(&self) -> bool {
-        self.running
+    fn running(&mut self) -> bool {
+        self.memory()[0xFFFE] > 0
     }
 
     fn memory(&mut self) -> &mut VmMemory {
