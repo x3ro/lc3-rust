@@ -3,6 +3,8 @@ use std::io;
 use std::io::prelude::*;
 use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
+use std::thread;
+use std::time;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -459,6 +461,36 @@ mod tests {
         run(&mut state).unwrap();
         assert_eq!(state.registers()[Registers::PC], 0x204);
         assert_eq!(state.registers()[Registers::R0], (-2i16) as u16);
+    }
+
+    #[test]
+    fn test_memory_mapped_io() {
+        let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+        let mut state = MyVmState::new(rx);
+        let mutex = state.memory_mutex();
+
+        // This thread simulates a memory-mapped I/O device that, upon
+        // writing something != 0 into 0xFE01 sets 0xFE00 to 42 and then
+        // terminates.
+        let handle = thread::spawn(move || {
+            let one_millis = time::Duration::from_millis(1);
+            while true {
+                let mut memory = mutex.lock().unwrap();
+                if memory[0xFE01] > 0 {
+                    break;
+                }
+                thread::sleep(one_millis);
+            }
+            let mut memory = mutex.lock().unwrap();
+            memory[0xFE00] = 42;
+        });
+
+        let result = run_file(&mut state, vec!("tests/memory_mapped_io.obj"), 0x3000);
+        handle.join();
+
+        assert_eq!(state.memory()[0xFE00], 42);
+        assert_eq!(state.memory()[0xFE01], 1);
+        assert_eq!(state.registers()[Registers::R0], 42);
     }
 
     #[test]
