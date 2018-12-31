@@ -11,7 +11,7 @@ extern crate num_derive;
 extern crate num_traits;
 
 extern crate clap;
-use clap::{Arg, App, SubCommand};
+use clap::{Arg, App};
 
 #[macro_use]
 mod util;
@@ -87,7 +87,7 @@ fn main() -> io::Result<()> {
 
     let filenames: Vec<_> = matches.values_of("programs").unwrap().collect();
     let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
-    let e = u16::from_str_radix(entry_point.trim_left_matches("0x"), 16).unwrap();
+    let e = u16::from_str_radix(entry_point.trim_start_matches("0x"), 16).unwrap();
 
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let mut state = MyVmState::new(rx);
