@@ -106,7 +106,7 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 let address1 = state.registers()[base_r];
                 let address2 = binary_add(address1, offset6);
                 let value = state.memory()[address2];
-                state.registers()[dr] = state.memory()[address2];
+                state.registers()[dr] = value;
                 update_condition_codes(state, value);
             },
 
@@ -174,7 +174,8 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                         let pc = state.registers()[Registers::PC];
                         state.registers()[Registers::R7] = pc + 1;
                         // -1 because we increment the PC at the end of execute_next_instruction
-                        state.registers()[Registers::PC] = state.memory()[trapvect8] - 1;
+                        let new_pc = state.memory()[trapvect8] - 1;
+                        state.registers()[Registers::PC] = new_pc;
                     }
                 }
             },

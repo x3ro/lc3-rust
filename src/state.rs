@@ -4,6 +4,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
 use std::sync::mpsc::Receiver;
+use std::sync::{Mutex, MutexGuard};
 
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
@@ -109,7 +110,7 @@ impl VmDisplay for DefaultVmDisplay {
 
 pub trait VmState {
     fn running(&mut self) -> bool;
-    fn memory(&mut self) -> &mut VmMemory;
+    fn memory(&mut self) -> MutexGuard<VmMemory>;
     fn registers(&mut self) -> &mut VmRegisters;
     fn display(&mut self) -> &mut VmDisplay;
     fn increment_pc(&mut self);
@@ -118,7 +119,7 @@ pub trait VmState {
 }
 
 pub struct MyVmState<'a> {
-    pub memory: VmMemory,
+    pub memory: Mutex<VmMemory>,
     pub registers: VmRegisters,
     pub display: Box<VmDisplay + 'a>,
     pub running: bool,
@@ -136,7 +137,7 @@ impl<'a> MyVmState<'a> {
 
     pub fn new_with_display(d: Box<VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
         let mut x = Self {
-            memory: VmMemory{memory: [0; MEM_SIZE]},
+            memory: Mutex::new(VmMemory{memory: [0; MEM_SIZE]}),
             registers: VmRegisters {registers: [0; REGISTER_COUNT]},
             running: true,
             display: d,
@@ -174,8 +175,8 @@ impl<'a> VmState for MyVmState<'a> {
         self.memory()[0xFFFE] > 0
     }
 
-    fn memory(&mut self) -> &mut VmMemory {
-        &mut self.memory
+    fn memory(&mut self) -> MutexGuard<VmMemory> {
+        self.memory.lock().unwrap()
     }
 
     fn registers(&mut self) -> &mut VmRegisters {
