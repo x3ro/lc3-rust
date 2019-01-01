@@ -474,8 +474,8 @@ mod tests {
         // terminates.
         let handle = thread::spawn(move || {
             let one_millis = time::Duration::from_millis(1);
-            while true {
-                let mut memory = mutex.lock().unwrap();
+            loop {
+                let memory = mutex.lock().unwrap();
                 if memory[0xFE01] > 0 {
                     break;
                 }
@@ -486,7 +486,8 @@ mod tests {
         });
 
         let result = run_file(&mut state, vec!("tests/memory_mapped_io.obj"), 0x3000);
-        handle.join();
+        assert!(result.is_ok(), "{}", result.unwrap_err());
+        handle.join().unwrap();
 
         assert_eq!(state.memory()[0xFE00], 42);
         assert_eq!(state.memory()[0xFE01], 1);
