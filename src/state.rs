@@ -5,6 +5,7 @@ use std::ops::IndexMut;
 use std::ops::Range;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard};
+use std::io::{self, Write};
 
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
@@ -104,7 +105,8 @@ pub struct DefaultVmDisplay {}
 
 impl VmDisplay for DefaultVmDisplay {
     fn print(&mut self, c: u8) -> () {
-        print!("{}", c as char)
+        print!("{}", c as char);
+        io::stdout().flush().unwrap();
     }
 }
 

@@ -11,6 +11,8 @@ type Result<T> = std::result::Result<T, String>;
 #[macro_use]
 extern crate num_derive;
 extern crate num_traits;
+extern crate termios;
+use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
 
 extern crate clap;
 use clap::{Arg, App};
@@ -72,6 +74,75 @@ fn run_file(state: &mut VmState, filenames: Vec<&str>, start_pc: u16) -> io::Res
     }
 }
 
+fn start_output_thread(state: &mut VmState) -> std::thread::JoinHandle<()> {
+    let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+    let mutex = state.memory_mutex();
+
+    // // 20 fps = 1000ms/50ms
+    // let fps = time::Duration::from_millis(50);
+    let handle = thread::spawn(move || {
+        loop {
+            //thread::sleep(fps);
+            let mut memory = mutex.lock().unwrap();
+            memory[0xFE04] = 0xFFFF;
+            if memory[0xFE06] > 0 {
+                let c = (memory[0xFE06] as u8) as char;
+                print!("{}", c);
+                io::stdout().flush().unwrap();
+                memory[0xFE06] = 0;
+            }
+            if memory[0xFFFE] == 0 {
+                println!("bye from output");
+                break;
+            }
+        }
+    });
+
+    handle
+}
+
+fn start_input_thread(state: &mut VmState) -> std::thread::JoinHandle<()> {
+    let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+    let mutex = state.memory_mutex();
+
+    let handle = thread::spawn(move || {
+
+        let stdin = 0; // couldn't get std::os::unix::io::FromRawFd to work
+                   // on /dev/stdin or /dev/tty
+        let termios = Termios::from_fd(stdin).unwrap();
+        let mut new_termios = termios.clone();  // make a mutable copy of termios
+                                                // that we will modify
+        new_termios.c_lflag &= !(ICANON | ECHO); // no echo and canonical mode
+        tcsetattr(stdin, TCSANOW, &mut new_termios).unwrap();
+
+        let stdin = io::stdin();
+        let mut handle = stdin.lock();
+
+        loop {
+            {
+                let mut memory = mutex.lock().unwrap();
+                memory[0xFE00] = 0x0;
+            }
+
+
+
+            let mut buffer: [u8; 1] = [0; 1];
+            handle.read_exact(&mut buffer).unwrap();
+
+            let mut memory = mutex.lock().unwrap();
+            memory[0xFE00] = 0xFFFF;
+            memory[0xFE02] = buffer[0] as u16;
+
+            if memory[0xFFFE] == 0 {
+                println!("bye from input");
+                break;
+            }
+        }
+    });
+
+    handle
+}
+
 fn main() -> io::Result<()> {
     let matches = App::new("My Super Program")
         .arg(Arg::with_name("programs")
@@ -94,10 +165,16 @@ fn main() -> io::Result<()> {
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let mut state = MyVmState::new(rx);
 
-    match run_file(&mut state, filenames, e) {
+    let inhandle = start_input_thread(&mut state); // TODO handle
+    let outhandle = start_output_thread(&mut state); // todo handle
+    let res = match run_file(&mut state, filenames, e) {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
-    }
+    };
+
+    outhandle.join().unwrap();
+    res
+
 }
 
 #[cfg(test)]
