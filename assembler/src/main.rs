@@ -5,9 +5,11 @@ extern crate num_traits;
 extern crate num_derive;
 
 use num_traits::FromPrimitive;
+use std::convert::TryFrom;
 
-use combine::{many1, Parser, sep_by,char,skip_many,satisfy,skip_many1};
-use combine::char::{space,hex_digit,digit,upper};
+use combine::{many1, Parser, sep_by,char,skip_many,satisfy,skip_many1,attempt,many};
+use combine::char::{space,hex_digit,digit,upper,newline};
+use combine::parser::range::take_while;
 
 use combine::error::ParseError;
 use combine::stream::StreamErrorFor;
@@ -15,11 +17,10 @@ use combine::error::StreamError;
 use combine::{choice, optional, Stream};
 use combine::stream::state::State;
 
-
-
 #[macro_use]
 mod tokens;
 use tokens::*;
+
 
 fn space_no_line_ending<I>() -> impl Parser<Input = I, Output = char>
     where
@@ -37,6 +38,24 @@ fn parse_space_no_line_endings() {
 }
 
 
+
+fn all_but_line_endings<I>() -> impl Parser<Input = I, Output = char>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    let f: fn(char) -> bool = |c| c != '\n' && c != '\r';
+    satisfy(f).expected("any character (except line endings)")
+}
+
+#[test]
+fn test_all_but_line_endings() {
+    let result = skip_many(all_but_line_endings()).easy_parse("abcABC123;üX\nnew line");
+    assert_eq!(Ok(((), "\nnew line")), result)
+}
+
+
+
 fn dot_command<I>(cmd: &'static str) -> impl Parser<Input = I, Output = &'static str>
     where
         I: Stream<Item = char>,
@@ -50,6 +69,8 @@ fn dot_command<I>(cmd: &'static str) -> impl Parser<Input = I, Output = &'static
             parsed_cmd
         })
 }
+
+
 
 fn dot_origin<I>() -> impl Parser<Input = I, Output = i64>
     where
@@ -67,13 +88,7 @@ fn dot_origin<I>() -> impl Parser<Input = I, Output = i64>
                 Operand::Immediate { value } if (0 ..= max).contains(&value) => Ok(value),
                 value => Err(format!("Selected origin '{:?}' is negative or too large", value))
             }.map_err(|e|StreamErrorFor::<I>::message_message(e))
-//            if value > u16::MAX { Ok(value) } else { Err("") }
         })
-//        .map(|(_, _,value)| {
-//            // It's okay to unwrap here, since the parser guarantees
-//            // the string to only contain hex digits
-//            u32::from_str_radix(&value, 16).unwrap()
-//        })
 }
 
 #[test]
@@ -83,6 +98,8 @@ fn parse_dot_origin() {
     assert_eq!(true, dot_origin().easy_parse(".ORIG xFFFF1").is_err());
     assert_eq!(true, dot_origin().easy_parse(".ORIG #-1").is_err());
 }
+
+
 
 fn register<I>() -> impl Parser<Input = I, Output = Operand>
     where
@@ -131,6 +148,8 @@ fn parse_prefixed_hex() {
     assert_eq!(true, prefixed_hex().easy_parse(State::new("xFFFF1")).is_err());
 }
 
+
+
 fn prefixed_signed<I>() -> impl Parser<Input = I, Output = i64>
     where
         I: Stream<Item = char>,
@@ -157,6 +176,7 @@ fn parse_prefixed_signed() {
     // Parse error if the integer is too large (signed, thus 2^15-1)
     assert_eq!(true, prefixed_signed().easy_parse(State::new("#32768")).is_err());
 }
+
 
 
 fn immediate<I>() -> impl Parser<Input = I, Output = Operand>
@@ -197,6 +217,8 @@ fn operand<I>() -> impl Parser<Input = I, Output = Operand>
         })
 }
 
+
+
 fn operands<I>() -> impl Parser<Input = I, Output = Vec<Operand>>
     where
         I: Stream<Item = char>,
@@ -219,8 +241,6 @@ fn parse_operands() {
 
 
 
-
-
 fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
     where
         I: Stream<Item = char>,
@@ -228,10 +248,11 @@ fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
 {
     many1::<String,_>(upper())
         .and_then(|s|
-            Opcode::from_string(s.to_owned())
+            Opcode::try_from(&s)
                 .map_err(|x| StreamErrorFor::<I>::unexpected_message(x))
         )
 }
+
 
 
 fn instruction<I>() -> impl Parser<Input = I, Output = Instruction>
@@ -241,7 +262,7 @@ fn instruction<I>() -> impl Parser<Input = I, Output = Instruction>
 {
     (
         opcode(),
-        skip_many1(space_no_line_ending()),
+        skip_many(space_no_line_ending()),
         operands()
     )
         .map(|(opcode,_,operands)| {
@@ -257,19 +278,182 @@ fn parse_instruction() {
     );
 }
 
-fn identifier<I>() -> impl Parser<Input = I, Output = String>
+
+
+fn label<I>() -> impl Parser<Input = I, Output = String>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     many1(upper())
+        .and_then(|label: String| match Opcode::try_from(&label) {
+            Err(_) => Ok(label),
+            Ok(_) => Err(format!("Labels must not have the same name as opcodes. Here: '{}'", label))
+        }.map_err(|e| StreamErrorFor::<I>::message_message(e))
+        )
+
+}
+
+
+
+// For convenience, to make writing "line()" a bit easier
+fn maybe_label<I>() -> impl Parser<Input = I, Output = Option<String>>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    optional(attempt((
+        label(),
+        skip_many(space_no_line_ending()),
+    )))
+        .map(|x| match x {
+            Some((label, _)) => Some(label),
+            _ => None,
+        })
 }
 
 #[test]
-fn parse_identifier() {
-    assert_eq!(identifier().easy_parse("FLUBBEL"), Ok((String::from("FLUBBEL"), "")));
-    assert_eq!(identifier().easy_parse("fLUBBEL").is_err(), true)
+fn parse_label() {
+    assert_eq!(label().easy_parse("FLUBBEL"), Ok((String::from("FLUBBEL"), "")));
+    assert_eq!(label().easy_parse("fLUBBEL").is_err(), true);
+
+    assert_eq!(maybe_label().easy_parse("FLUBBEL"), Ok((Some(String::from("FLUBBEL")), "")));
+    assert_eq!(maybe_label().easy_parse("fLUBBEL"), Ok((None, "fLUBBEL")));
+
+    // Labels cannot be the same as opcodes
+    assert_eq!(label().easy_parse("ADD").is_err(), true);
 }
 
+
+
+fn maybe_comment<I>() -> impl Parser<Input = I, Output = Option<String>>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    optional((
+        skip_many(space_no_line_ending()),
+        char::char(';'),
+        many(all_but_line_endings()),
+    ))
+        .map(|opt| match opt {
+            Some((_,_,asd)) => Some(asd),
+            None => None,
+        })
+}
+
+#[test]
+fn parse_maybe_comment() {
+    let (result, remainder) = maybe_comment().easy_parse(" ; as;das;das\nnew line").unwrap();
+    assert_eq!(result, Some(String::from(" as;das;das")));
+    assert_eq!(remainder, "\nnew line");
+}
+
+
+
+fn thecodez<I>() -> impl Parser<Input = I, Output = Line>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        skip_many(space_no_line_ending()),
+        maybe_label(),
+        optional(instruction()),
+        maybe_comment(),
+        newline()
+    )
+        .map(|(_,label,instruction,comment,_)| Line { label, instruction, comment })
+}
+
+#[test]
+fn parse_line_full() {
+    let (result, remainder) = thecodez().easy_parse("FLUBBEL ADD R0, R1, #12 ; foobar\n").unwrap();
+
+    assert_eq!(result.comment, Some(String::from(" foobar")));
+    assert_eq!(result.label, Some(String::from("FLUBBEL")));
+    assert_eq!(result.instruction, Some(Instruction {
+        opcode: Opcode::Add,
+        operands: vec![Operand::register(0), Operand::register(1), Operand::immediate(12)]})
+    );
+    assert_eq!(remainder, "");
+}
+
+#[test]
+fn parse_line_only_label() {
+    let (result, remainder) = thecodez().easy_parse("FLUBBEL\n").unwrap();
+
+    assert_eq!(result.comment, None);
+    assert_eq!(result.label, Some(String::from("FLUBBEL")));
+    assert_eq!(result.instruction, None);
+    assert_eq!(remainder, "");
+}
+
+#[test]
+fn parse_line_only_comment() {
+    let (result, remainder) = thecodez().easy_parse("; foobar\n").unwrap();
+
+    assert_eq!(result.comment, Some(String::from(" foobar")));
+    assert_eq!(result.label, None);
+    assert_eq!(result.instruction, None);
+    assert_eq!(remainder, "");
+}
+
+
+
+fn line<I, P, O>(p: P) -> impl Parser<Input = I, Output = O>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+        P: Parser<Input = I, Output = O>
+{
+    (
+        skip_many(space_no_line_ending()),
+        p,
+        newline()
+    )
+        .map(|(_,output,_)| output)
+}
+
+
+
+fn lc3_file<I>() -> impl Parser<Input = I, Output = ()>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        skip_many(space()),
+        line(dot_origin()),
+        many::<Vec<Instruction>,_>(line(instruction())),
+        line(dot_command("END")),
+        skip_many(space()),
+    )
+        .map(|x| ())
+}
+
+#[test]
+fn parse_lc3_file() {
+    let input = r#"
+.ORIG x3000
+    ADD R0, R0, #7
+    HALT
+    ADD R0, R0, #-7
+    HALT
+    ADD R0, R0, #-1
+    HALT
+    ADD R0, R0, #-1
+.END
+
+"#;
+
+    let r = lc3_file().easy_parse(State::new(input));
+    println!("{:?}", r);
+
+    assert_eq!("foo", "bar");
+
+}
+
+// TODO: more opcodes and dot commands
 // OTHER_VALUE .FILL x1200
 // HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"

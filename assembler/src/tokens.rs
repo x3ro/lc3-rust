@@ -1,4 +1,5 @@
 use num_traits::FromPrimitive;
+use std::convert::TryFrom;
 
 #[derive(Debug,PartialEq,Copy,Clone,num_derive::FromPrimitive)]
 pub enum Registers {
@@ -31,6 +32,18 @@ impl Operand {
 #[derive(Debug,PartialEq)]
 pub enum Opcode {
     Add,
+    Halt,
+}
+
+impl TryFrom<&String> for Opcode {
+    type Error = String;
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        match value.to_lowercase().as_ref() {
+            "add" => Ok(Opcode::Add),
+            "halt" => Ok(Opcode::Halt),
+            x => Err(format!("Unknown opcode '{}'", x))
+        }
+    }
 }
 
 impl Opcode {
@@ -40,19 +53,17 @@ impl Opcode {
     }
 }
 
-impl Opcode {
-    pub fn from_string(s: String) -> Result<Self, String> {
-        match s.as_ref() {
-            "ADD" => Ok(Opcode::Add),
-            _ => Err(format!("invalid opcode {}", s))
-        }
-    }
-}
-
 
 
 #[derive(Debug,PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub operands: Vec<Operand>,
+}
+
+#[derive(Debug,PartialEq)]
+pub struct Line {
+    pub label: Option<String>,
+    pub instruction: Option<Instruction>,
+    pub comment: Option<String>,
 }
