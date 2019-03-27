@@ -261,9 +261,25 @@ fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
         )
 }
 
+fn pseudo_opcode<I>() -> impl Parser<Input = I, Output = Opcode>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        char::char('.'),
+        many1::<String,_>(upper()),
+    )
+        .and_then(|(_,s)|
+
+            Opcode::try_from(&format!(".{}", s))
+                .map_err(|x| StreamErrorFor::<I>::unexpected_message(x))
+        )
+}
 
 
-fn instruction<I>() -> impl Parser<Input = I, Output = Instruction>
+
+fn real_instruction<I>() -> impl Parser<Input = I, Output = Instruction>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -276,6 +292,29 @@ fn instruction<I>() -> impl Parser<Input = I, Output = Instruction>
         .map(|(opcode,_,operands)| {
             Instruction { opcode, operands }
         })
+}
+
+fn pseudo_instruction<I>() -> impl Parser<Input = I, Output = Instruction>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        pseudo_opcode(),
+        skip_many(space_no_line_ending()),
+        operands()
+    )
+        .map(|(opcode,_,operands)| {
+            Instruction { opcode, operands }
+        })
+}
+
+fn instruction<I>() -> impl Parser<Input = I, Output = Instruction>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    choice((real_instruction(), pseudo_instruction()))
 }
 
 #[test]
@@ -360,7 +399,7 @@ fn parse_maybe_comment() {
 
 
 
-fn some_line<I>() -> impl Parser<Input = I, Output = Line>
+fn assembler_line<I>() -> impl Parser<Input = I, Output = Line>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -375,7 +414,7 @@ fn some_line<I>() -> impl Parser<Input = I, Output = Line>
 
 #[test]
 fn parse_line_full() {
-    let (result, remainder) = some_line().easy_parse("FLUBBEL ADD R0, R1, #12 ; foobar").unwrap();
+    let (result, remainder) = assembler_line().easy_parse("FLUBBEL ADD R0, R1, #12 ; foobar").unwrap();
 
     assert_eq!(result.comment, Some(String::from(" foobar")));
     assert_eq!(result.label, Some(String::from("FLUBBEL")));
@@ -388,7 +427,7 @@ fn parse_line_full() {
 
 #[test]
 fn parse_line_only_label() {
-    let (result, remainder) = some_line().easy_parse("FLUBBEL").unwrap();
+    let (result, remainder) = assembler_line().easy_parse("FLUBBEL").unwrap();
 
     assert_eq!(result.comment, None);
     assert_eq!(result.label, Some(String::from("FLUBBEL")));
@@ -398,7 +437,7 @@ fn parse_line_only_label() {
 
 #[test]
 fn parse_line_only_comment() {
-    let (result, remainder) = some_line().easy_parse("; foobar").unwrap();
+    let (result, remainder) = assembler_line().easy_parse("; foobar").unwrap();
 
     assert_eq!(result.comment, Some(String::from(" foobar")));
     assert_eq!(result.label, None);
@@ -432,7 +471,9 @@ fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
     (
         skip_many(space()),
         line(dot_origin()),
-        many::<Vec<Line>,_>(line(some_line())),
+        many::<Vec<Line>,_>(line(attempt(assembler_line()))), // Attempt is needed here, because
+                                                                      // .END could be either a pseudo-operation
+                                                                      // without label or the dot command :/
         line(dot_command("END")),
         skip_many(space()),
     )
@@ -453,17 +494,17 @@ ADD R0, R0, R2 ;  = 0 - 16 = -16
 HALT
 SOME_X    .FILL x10   ;  16
 SOME_Y    .FILL xFFF0 ; -16
-HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
 .END
 
 "#;
 
     let r = lc3_file().easy_parse(State::new(input));
-    println!("{:?}", r);
 
+    if r.is_err() {
+        println!("{:#?}", r);
+    }
 
-    assert_eq!("foo", "bar");
-
+    assert_eq!(false, r.is_err());
 }
 
 // TODO: more opcodes and dot commands
