@@ -18,7 +18,6 @@ pub enum Operand {
     Register { r: Registers },
     Immediate { value: i64 },
     Label { name: String },
-    String { value: String }
 }
 
 impl Operand {
