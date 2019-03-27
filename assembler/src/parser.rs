@@ -59,7 +59,7 @@ fn dot_command<I>(cmd: &'static str) -> impl Parser<Input = I, Output = &'static
 
 
 
-fn dot_origin<I>() -> impl Parser<Input = I, Output = i64>
+fn dot_origin<I>() -> impl Parser<Input = I, Output = u16>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -72,7 +72,7 @@ fn dot_origin<I>() -> impl Parser<Input = I, Output = i64>
         .and_then(|(_,_,value)| {
             let max = std::u16::MAX as i64;
             match value {
-                Operand::Immediate { value } if (0 ..= max).contains(&value) => Ok(value),
+                Operand::Immediate { value } if (0 ..= max).contains(&value) => Ok(value as u16),
                 value => Err(format!("Selected origin '{:?}' is negative or too large", value))
             }.map_err(|e|StreamErrorFor::<I>::message_message(e))
         })
@@ -450,7 +450,7 @@ fn line<I, P, O>(p: P) -> impl Parser<Input = I, Output = O>
 
 
 
-fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
+pub fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,

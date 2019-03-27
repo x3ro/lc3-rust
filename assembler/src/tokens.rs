@@ -13,6 +13,10 @@ pub enum Registers {
     R7,
 }
 
+//impl Registers {
+//    pub fn
+//}
+
 #[derive(Debug,PartialEq,Clone)]
 pub enum Operand {
     Register { r: Registers },
@@ -78,7 +82,7 @@ impl Opcode {
 
 #[derive(Debug,PartialEq)]
 pub struct Lc3File {
-    pub origin: i64,
+    pub origin: u16,
     pub lines: Vec<Line>,
 }
 
