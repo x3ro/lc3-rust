@@ -13,10 +13,11 @@ pub enum Registers {
     R7,
 }
 
-#[derive(Debug,PartialEq,Copy,Clone)]
+#[derive(Debug,PartialEq,Clone)]
 pub enum Operand {
     Register { r: Registers },
     Immediate { value: i64 },
+    Label { name: String },
 }
 
 impl Operand {
@@ -33,6 +34,7 @@ impl Operand {
 pub enum Opcode {
     Add,
     Halt,
+    Ld,
 }
 
 impl TryFrom<&String> for Opcode {
@@ -41,6 +43,7 @@ impl TryFrom<&String> for Opcode {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
             "halt" => Ok(Opcode::Halt),
+            "ld" => Ok(Opcode::Ld),
             x => Err(format!("Unknown opcode '{}'", x))
         }
     }
@@ -53,7 +56,11 @@ impl Opcode {
     }
 }
 
-
+#[derive(Debug,PartialEq)]
+pub struct Lc3File {
+    pub origin: i64,
+    pub lines: Vec<Line>,
+}
 
 #[derive(Debug,PartialEq)]
 pub struct Instruction {

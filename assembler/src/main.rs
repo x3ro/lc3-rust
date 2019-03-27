@@ -198,6 +198,13 @@ fn parse_immediate() {
     assert_eq!(Ok((Operand::Immediate { value: 255}, "")), immediate().easy_parse("xFF"));
 }
 
+fn operand_label<I>() -> impl Parser<Input = I, Output = Operand>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    label().map(|name| Operand::Label { name })
+}
 
 
 fn operand<I>() -> impl Parser<Input = I, Output = Operand>
@@ -209,7 +216,8 @@ fn operand<I>() -> impl Parser<Input = I, Output = Operand>
         skip_many(space_no_line_ending()),
         choice((
             register(),
-            immediate()
+            immediate(),
+            operand_label(),
         ))
     )
         .map(|(_,op)| {
@@ -285,11 +293,12 @@ fn label<I>() -> impl Parser<Input = I, Output = String>
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many1(upper())
-        .and_then(|label: String| match Opcode::try_from(&label) {
-            Err(_) => Ok(label),
-            Ok(_) => Err(format!("Labels must not have the same name as opcodes. Here: '{}'", label))
-        }.map_err(|e| StreamErrorFor::<I>::message_message(e))
+    many1(choice((upper(), char::char('_'))))
+        .and_then(|label: String|
+            match Opcode::try_from(&label) {
+                Err(_) => Ok(label),
+                Ok(_) => Err(format!("Labels must not have the same name as opcodes. Here: '{}'", label))
+            }.map_err(|e| StreamErrorFor::<I>::message_message(e))
         )
 
 }
@@ -351,24 +360,22 @@ fn parse_maybe_comment() {
 
 
 
-fn thecodez<I>() -> impl Parser<Input = I, Output = Line>
+fn some_line<I>() -> impl Parser<Input = I, Output = Line>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        skip_many(space_no_line_ending()),
         maybe_label(),
         optional(instruction()),
         maybe_comment(),
-        newline()
     )
-        .map(|(_,label,instruction,comment,_)| Line { label, instruction, comment })
+        .map(|(label,instruction,comment)| Line { label, instruction, comment })
 }
 
 #[test]
 fn parse_line_full() {
-    let (result, remainder) = thecodez().easy_parse("FLUBBEL ADD R0, R1, #12 ; foobar\n").unwrap();
+    let (result, remainder) = some_line().easy_parse("FLUBBEL ADD R0, R1, #12 ; foobar").unwrap();
 
     assert_eq!(result.comment, Some(String::from(" foobar")));
     assert_eq!(result.label, Some(String::from("FLUBBEL")));
@@ -381,7 +388,7 @@ fn parse_line_full() {
 
 #[test]
 fn parse_line_only_label() {
-    let (result, remainder) = thecodez().easy_parse("FLUBBEL\n").unwrap();
+    let (result, remainder) = some_line().easy_parse("FLUBBEL").unwrap();
 
     assert_eq!(result.comment, None);
     assert_eq!(result.label, Some(String::from("FLUBBEL")));
@@ -391,7 +398,7 @@ fn parse_line_only_label() {
 
 #[test]
 fn parse_line_only_comment() {
-    let (result, remainder) = thecodez().easy_parse("; foobar\n").unwrap();
+    let (result, remainder) = some_line().easy_parse("; foobar").unwrap();
 
     assert_eq!(result.comment, Some(String::from(" foobar")));
     assert_eq!(result.label, None);
@@ -417,7 +424,7 @@ fn line<I, P, O>(p: P) -> impl Parser<Input = I, Output = O>
 
 
 
-fn lc3_file<I>() -> impl Parser<Input = I, Output = ()>
+fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -425,30 +432,35 @@ fn lc3_file<I>() -> impl Parser<Input = I, Output = ()>
     (
         skip_many(space()),
         line(dot_origin()),
-        many::<Vec<Instruction>,_>(line(instruction())),
+        many::<Vec<Line>,_>(line(some_line())),
         line(dot_command("END")),
         skip_many(space()),
     )
-        .map(|x| ())
+        .map(|(_,origin,lines,_,_)| Lc3File { origin, lines })
 }
 
 #[test]
 fn parse_lc3_file() {
     let input = r#"
 .ORIG x3000
-    ADD R0, R0, #7
-    HALT
-    ADD R0, R0, #-7
-    HALT
-    ADD R0, R0, #-1
-    HALT
-    ADD R0, R0, #-1
+LD R1, SOME_X
+LD R2, SOME_Y
+ADD R0, R0, R1 ; = 0 + 16 = 16
+HALT
+ADD R0, R0, R2 ; = 16 - 16 = 0
+HALT
+ADD R0, R0, R2 ;  = 0 - 16 = -16
+HALT
+SOME_X    .FILL x10   ;  16
+SOME_Y    .FILL xFFF0 ; -16
+HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
 .END
 
 "#;
 
     let r = lc3_file().easy_parse(State::new(input));
     println!("{:?}", r);
+
 
     assert_eq!("foo", "bar");
 
