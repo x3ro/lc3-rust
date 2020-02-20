@@ -1,4 +1,4 @@
-#![feature(range_contains)]
+//#![feature(range_contains)]
 
 extern crate combine;
 extern crate num_traits;
