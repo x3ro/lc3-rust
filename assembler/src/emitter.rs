@@ -10,7 +10,7 @@ pub fn lol(offset: u16, instruction: Instruction) -> Box<Emittable> {
     }
 }
 
-struct Emittable {
+pub struct Emittable {
     offset: u16,
     instruction: Instruction,
 }
