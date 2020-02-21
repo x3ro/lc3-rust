@@ -1,5 +1,6 @@
 use combine::{many1,Parser,sep_by,skip_many,satisfy,skip_many1,attempt,many,choice,optional,Stream};
 use combine::char::{space,hex_digit,digit,upper,newline,char,string_cmp};
+use combine::range::{recognize,take_while};
 
 use combine::error::{ParseError, StreamError};
 use combine::stream::{StreamErrorFor, state::State};
@@ -205,14 +206,13 @@ fn operand<I>() -> impl Parser<Input = I, Output = Operand>
             register(),
             immediate(),
             operand_label(),
+            //string_operand(),
         ))
     )
         .map(|(_,op)| {
             op
         })
 }
-
-
 
 fn operands<I>() -> impl Parser<Input = I, Output = Vec<Operand>>
     where
@@ -235,6 +235,24 @@ fn parse_operands() {
 }
 
 
+fn string_operand<I>() -> impl Parser<Input = I, Output = Operand>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        char('"'),
+        many1::<Vec<char>, _>(satisfy(|c| c != '"')),
+        char('"')
+    )
+        .map(|(_,value,_)| Operand::String { value: value.into_iter().collect() })
+}
+
+#[test]
+fn parse_string_operand() {
+    let expected = Ok((Operand::String { value: "foobar".into() }, ""));
+    assert_eq!(expected, string_operand().easy_parse("\"foobar\""))
+}
 
 fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
     where
@@ -258,7 +276,8 @@ fn pseudo_opcode<I>() -> impl Parser<Input = I, Output = Opcode>
         many1::<String,_>(upper()),
     )
         .and_then(|(_,s)|
-
+            // TODO: This error message doesn't show, likely because we're using attempt()
+            // in lc3_file()... investigate further.
             Opcode::try_from(&format!(".{}", s))
                 .map_err(|x| StreamErrorFor::<I>::unexpected_message(x))
         )
@@ -475,10 +494,11 @@ ADD R0, R0, R1 ; = 0 + 16 = 16
 HALT
 ADD R0, R0, R2 ; = 16 - 16 = 0
 HALT
-ADD R0, R0, R2 ;  = 0 - 16 = -16
+ADD R0, R0, R2, R4, R5, R6
 HALT
-SOME_X    .FILL x10   ;  16
+SOME_X    .FILL x10, x12, xFFFF   ; wat
 SOME_Y    .FILL xFFF0 ; -16
+HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
 .END
 
 "#;
