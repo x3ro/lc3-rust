@@ -1,18 +1,29 @@
 use tokens::*;
 use std::fmt::Debug;
-use Lc3State;
+use ::{Lc3State, Offset};
 
-pub fn lol(offset: u16, instruction: Instruction) -> Box<Emittable> {
+pub fn lol(offset: u16, instruction: Instruction) -> Emittable {
     match instruction.opcode {
-        Opcode::Ld => Box::new(Load { offset, instruction }),
-        Opcode::Fill => Box::new(Fill { offset, instruction }),
+        Opcode::Ld => Emittable { offset, instruction },
+        Opcode::Fill => Emittable { offset, instruction },
         _ => panic!("Unknown {:?}", instruction)
     }
 }
 
+#[derive(Debug)]
 pub struct Emittable {
-    offset: u16,
+    offset: Offset,
     instruction: Instruction,
+}
+
+impl Emittable {
+    pub fn size(&self) -> u16 {
+        16
+    }
+
+    pub fn emit(&self, state: &Lc3State) -> Vec<u16> {
+        vec![]
+    }
 }
 
 //struct Emittable {
@@ -28,9 +39,10 @@ pub struct Emittable {
 //
 //    fn emit(&self, state: &Lc3State) -> Vec<u16>;
 //}
-//
+
 //#[derive(Debug)]
 //pub struct Load { offset: u16, instruction: Instruction }
+
 //impl Emittable for Load {
 //    fn from(instruction: Instruction) -> Box<Self> {
 //        unimplemented!()

@@ -17,15 +17,17 @@ use std::collections::HashMap;
 use emitter::Emittable;
 use emitter::lol;
 
+type Offset = u16;
+
 #[derive(Debug)]
 pub struct Lc3State {
-    pub offset: u16,
-    pub emittables: Vec<Box<Emittable>>,
-    pub labels: HashMap<String, u16>,
+    pub offset: Offset,
+    pub emittables: Vec<Emittable>,
+    pub labels: HashMap<String, Offset>,
 }
 
 impl Lc3State {
-    pub fn relative_offset(&self, from_offset: u16, to_label: &String) -> u16 {
+    pub fn relative_offset(&self, from_offset: Offset, to_label: &String) -> u16 {
         match self.labels.get(to_label) {
             None => panic!("Label '{}' referenced but never defined", to_label),
             Some(v) => {
@@ -38,19 +40,16 @@ impl Lc3State {
 }
 
 pub fn into_emittable(state: &mut Lc3State, line: Line) -> &mut Lc3State {
-    match line {
-        Line { label, instruction: Some(i), .. } => {
-            let e = lol(state.offset, i);
+    if let Line { label, instruction: Some(i), .. } = line {
+        let e = lol(state.offset, i);
 
-            if let Some(name) = label {
-                state.labels.insert(name, state.offset);
-            }
+        if let Some(name) = label {
+            state.labels.insert(name, state.offset);
+        }
 
-            state.offset += e.size();
-            state.emittables.push(e);
-        },
-        _ => ()
-    };
+        state.offset += e.size();
+        state.emittables.push(e);
+    }
     state
 }
 
