@@ -15,7 +15,6 @@ use combine::stream::state::State;
 
 use std::collections::HashMap;
 use emitter::Emittable;
-use emitter::lol;
 
 type Offset = u16;
 
@@ -40,8 +39,8 @@ impl Lc3State {
 }
 
 pub fn into_emittable(state: &mut Lc3State, line: Line) -> &mut Lc3State {
-    if let Line { label, instruction: Some(i), .. } = line {
-        let e = lol(state.offset, i);
+    if let Line { label, instruction: Some(instruction), .. } = line {
+        let e = Emittable::from(instruction, state.offset);
 
         if let Some(name) = label {
             state.labels.insert(name, state.offset);
