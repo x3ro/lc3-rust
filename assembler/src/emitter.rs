@@ -10,27 +10,30 @@ pub struct Emittable {
 
 impl Emittable {
     pub fn size(&self) -> u16 {
+        // TODO: not all emittables are 16 bits (e.g. stringz or fill)
         16
     }
 
     pub fn emit(&self, state: &Lc3State) -> Vec<u16> {
         match &self.instruction {
             Instruction { opcode: Opcode::Ld, operands} => {
-                let opcode:u16 = 0b0010;
+                const OPCODE:u16 = 0b0010;
+                let mut result: u16 = OPCODE << 12;
 
-                let (register, offset) = match operands.as_slice() {
-                    [Operand::Register {r}, Operand::Label {name}] => (r, state.relative_offset(self.offset, name)),
+                match operands.as_slice() {
+                    [Operand::Register {r: dr}, Operand::Label {name}] => {
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= state.relative_offset(self.offset, name);
+                    },
                     _ => panic!("Unsupported {:?}", self.instruction)
                 };
 
-                vec![(opcode << 12) | ((register.to_owned() as u16) << 9) | offset]
+                vec![result]
             }
 
             Instruction { opcode: Opcode::Add, operands} => {
                 const OPCODE:u16 = 0b0001;
-
-                let mut result: u16 = 0b0000_0000_0000_0000;
-                result |= OPCODE << 12;
+                let mut result: u16 = OPCODE << 12;
 
                 match operands.as_slice() {
                     [Operand::Register {r: dr}, Operand::Register {r: sr1}, Operand::Register {r: sr2}] => {

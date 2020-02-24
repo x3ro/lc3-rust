@@ -119,6 +119,7 @@ pub fn test_basic_bytecode_emitting() {
     let ast = r.unwrap().0;
     let actual = assemble(ast);
 
+    // Expected bytecode generated with lc3as of lc3tools package
     let expected: Vec<u16> = vec![0x3000, 0x1027, 0x1267, 0x1442, 0xf025];
     assert_eq!(expected, actual);
 }
