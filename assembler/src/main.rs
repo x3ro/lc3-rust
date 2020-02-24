@@ -11,10 +11,13 @@ use tokens::*;
 use parser::lc3_file;
 use combine::Parser;
 
+
 use combine::stream::state::State;
 
 use std::collections::HashMap;
 use emitter::Emittable;
+use std::fs::File;
+use std::io::{Error, ErrorKind};
 
 type Offset = u16;
 
@@ -84,6 +87,42 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
 
     buffer
 }
+
+pub fn main() -> std::io::Result<()> {
+    use std::env;
+    use std::fs::File;
+    use std::io::prelude::*;
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 3 {
+        println!("Usage: lc3as <input file> <output file>");
+        return Ok(())
+        //return Err(Error::new(ErrorKind::Other, "Please provide a source file as the only parameter"));
+    }
+    let asm_input = args.get(1).unwrap();
+    let obj_output = args.get(2).unwrap();
+
+    let mut infile = File::open(asm_input)?;
+    let mut contents = String::new();
+    infile.read_to_string(&mut contents)?;
+
+    let r = lc3_file().easy_parse(State::new(contents.as_str()));
+    if r.is_err() {
+        println!("{:#?}", r);
+    }
+
+    let ast = r.unwrap().0;
+    let actual : Vec<u8> = assemble(ast)
+        .iter()
+        .flat_map(|x| vec![(x >> 8) as u8, (x & 0xff) as u8] )
+        .collect();
+
+    let mut outfile = File::create(obj_output)?;
+    outfile.write_all(actual.as_slice())?;
+
+    Ok(())
+}
+
 
 #[test]
 pub fn test_basic_bytecode_emitting() {
