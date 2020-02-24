@@ -18,7 +18,7 @@ impl Emittable {
             Instruction { opcode: Opcode::Ld, operands} => {
                 let opcode:u16 = 0b0010;
 
-                let (register, offset) = match self.instruction.operands.as_slice() {
+                let (register, offset) = match operands.as_slice() {
                     [Operand::Register {r}, Operand::Label {name}] => (r, state.relative_offset(self.offset, name)),
                     _ => panic!("Unsupported {:?}", self.instruction)
                 };
@@ -32,20 +32,20 @@ impl Emittable {
                 let mut result: u16 = 0b0000_0000_0000_0000;
                 result |= OPCODE << 12;
 
-                match self.instruction.operands.as_slice() {
+                match operands.as_slice() {
                     [Operand::Register {r: dr}, Operand::Register {r: sr1}, Operand::Register {r: sr2}] => {
-                        result |= ((dr.to_owned() as u16) << 9);
-                        result |= ((sr1.to_owned() as u16) << 6);
-                        result |= (sr2.to_owned() as u16);
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (sr1.to_owned() as u16) << 6;
+                        result |= sr2.to_owned() as u16;
                     }
 
                     [Operand::Register {r: dr}, Operand::Register {r: sr1}, Operand::Immediate {value: imm5}] => {
                         if imm5 > &31 {
                             panic!("Immediate value too large, must fit into 5 bits");
                         }
-                        result |= ((dr.to_owned() as u16) << 9);
-                        result |= ((sr1.to_owned() as u16) << 6);
-                        result |= (1 << 5);
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (sr1.to_owned() as u16) << 6;
+                        result |= 1 << 5;
                         result |= (imm5 & 0b11111) as u16;
                     }
                     _ => panic!("Unsupported {:?}", self.instruction)
@@ -69,7 +69,7 @@ impl Emittable {
             }
 
             Instruction { opcode: Opcode::Fill, operands} => {
-                self.instruction.operands
+                operands
                     .iter()
                     .map(|x| match x {
                         Operand::Immediate { value } => *value as u16,

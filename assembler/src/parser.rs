@@ -1,6 +1,5 @@
 use combine::{many1, Parser, sep_by, skip_many, satisfy, skip_many1, attempt, many, choice, optional, Stream, any};
 use combine::char::{space,hex_digit,digit,upper,newline,char,string_cmp};
-use combine::range::{recognize,take_while};
 
 use combine::error::{ParseError, StreamError};
 use combine::stream::{StreamErrorFor, state::State};
