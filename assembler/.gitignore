@@ -1,3 +1,10 @@
 .idea/
 target/
 *.iml
+*.bin
+*.dbg
+*.lst
+*.sym
+*.obj
+*.vconst
+.DS_Store
