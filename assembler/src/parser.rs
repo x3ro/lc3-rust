@@ -1,4 +1,4 @@
-use combine::{many1,Parser,sep_by,skip_many,satisfy,skip_many1,attempt,many,choice,optional,Stream};
+use combine::{many1, Parser, sep_by, skip_many, satisfy, skip_many1, attempt, many, choice, optional, Stream, any};
 use combine::char::{space,hex_digit,digit,upper,newline,char,string_cmp};
 use combine::range::{recognize,take_while};
 
@@ -206,7 +206,7 @@ fn operand<I>() -> impl Parser<Input = I, Output = Operand>
             register(),
             immediate(),
             operand_label(),
-            //string_operand(),
+            string_operand(),
         ))
     )
         .map(|(_,op)| {
@@ -234,6 +234,29 @@ fn parse_operands() {
     assert_eq!(expected, operands().easy_parse("R5, R5, #123"))
 }
 
+fn escaped_character<I>() -> impl Parser<Input = I, Output = char>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        char('\\'),
+        any(),
+    ).and_then(|(_, x)| match x {
+        '0' => Ok('\0'),
+        'n' => Ok('\n'),
+        '\\' => Ok('\\'),
+        '"' => Ok('"'),
+        _ => Err(StreamErrorFor::<I>::unexpected_message(format!("Invalid escape sequence \\{}", x)))
+    })
+}
+
+#[test]
+fn parse_escaped_character() {
+    let expected = Ok(('\n', " foo"));
+    assert_eq!(expected, escaped_character().easy_parse("\\n foo"))
+}
+
 
 fn string_operand<I>() -> impl Parser<Input = I, Output = Operand>
     where
@@ -242,7 +265,10 @@ fn string_operand<I>() -> impl Parser<Input = I, Output = Operand>
 {
     (
         char('"'),
-        many1::<Vec<char>, _>(satisfy(|c| c != '"')),
+        many1::<Vec<char>, _>(choice((
+            escaped_character(),
+            satisfy(|c| c != '"'),
+        ))),
         char('"')
     )
         .map(|(_,value,_)| Operand::String { value: value.into_iter().collect() })
@@ -250,8 +276,8 @@ fn string_operand<I>() -> impl Parser<Input = I, Output = Operand>
 
 #[test]
 fn parse_string_operand() {
-    let expected = Ok((Operand::String { value: "foobar".into() }, ""));
-    assert_eq!(expected, string_operand().easy_parse("\"foobar\""))
+    let expected = Ok((Operand::String { value: "foo \" bar \n baz \0".into() }, ""));
+    assert_eq!(expected, string_operand().easy_parse(r#""foo \" bar \n baz \0""#))
 }
 
 fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
@@ -498,7 +524,7 @@ ADD R0, R0, R2, R4, R5, R6
 HALT
 SOME_X    .FILL x10, x12, xFFFF   ; wat
 SOME_Y    .FILL xFFF0 ; -16
-HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
+HELLO_STR .STRINGZ "If I don't add this the \"assembler\" segfaults"
 .END
 
 "#;
