@@ -14,7 +14,7 @@ impl Emittable {
         16
     }
 
-    pub fn emit(&self, state: &Lc3State) -> Vec<u16> {
+    pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
         match &self.instruction {
             Instruction { opcode: Opcode::Ld, operands} => {
                 const OPCODE:u16 = 0b0010;
@@ -25,10 +25,11 @@ impl Emittable {
                         result |= (dr.to_owned() as u16) << 9;
                         result |= state.relative_offset(self.offset, name);
                     },
-                    _ => panic!("Unsupported {:?}", self.instruction)
+
+                    _ => return Err(format!("Unsupported operands for LD: {:?}", self.instruction))
                 };
 
-                vec![result]
+                Ok(vec![result])
             }
 
             Instruction { opcode: Opcode::Add, operands} => {
@@ -44,43 +45,46 @@ impl Emittable {
 
                     [Operand::Register {r: dr}, Operand::Register {r: sr1}, Operand::Immediate {value: imm5}] => {
                         if imm5 > &31 {
-                            panic!("Immediate value too large, must fit into 5 bits");
+                            return Err("Immediate value too large, must fit into 5 bits".into());
                         }
                         result |= (dr.to_owned() as u16) << 9;
                         result |= (sr1.to_owned() as u16) << 6;
                         result |= 1 << 5;
                         result |= (imm5 & 0b11111) as u16;
                     }
-                    _ => panic!("Unsupported {:?}", self.instruction)
+                    _ => return Err(format!("Unsupported operands for ADD: {:?}", self.instruction))
                 };
 
-                vec![result]
+                Ok(vec![result])
             }
 
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 
                 if operands.len() > 0 {
-                    panic!("HALT was used with operands, but does not take any")
+                    return Err("HALT was used with operands, but does not take any".into())
                 }
 
                 let mut result: u16 = 0b0000_0000_0000_0000;
                 result |= OPCODE << 12;
                 result |= 0x25;
 
-                vec![result]
+                Ok(vec![result])
             }
 
             Instruction { opcode: Opcode::Fill, operands} => {
-                operands
+                let res = operands
                     .iter()
                     .map(|x| match x {
                         Operand::Immediate { value } => *value as u16,
                         _ => panic!("Only immediate operands are allowed for fill in {:?}", self.instruction)
                     })
-                    .collect()
+                    .collect();
+
+                Ok(res)
             }
-            _ => panic!("Can't emit unknown instruction {:?}", self.instruction)
+
+            _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
 

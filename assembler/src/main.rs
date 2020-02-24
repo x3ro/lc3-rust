@@ -53,6 +53,7 @@ pub fn into_emittable(state: &mut Lc3State, line: Line) {
 
 pub fn assemble(ast: Lc3File) -> Vec<u16> {
     let mut buffer:Vec<u16> = vec![];
+    let mut errors: Vec<(&Emittable, String)> = vec![];
 
     let mut state = Lc3State {
         offset: ast.origin,
@@ -73,7 +74,12 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
 
     // The second pass emits the actual byte code
     for emittable in &state.emittables {
-        buffer.extend(&emittable.emit(&state));
+        let res= emittable.emit(&state);
+        if res.is_ok() {
+            buffer.extend(res.unwrap());
+        } else {
+            errors.push((emittable, res.unwrap_err()));
+        }
     }
 
     buffer
