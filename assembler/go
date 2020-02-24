@@ -16,11 +16,26 @@ function notice {
 
 function ensure_env {
     git submodule update --init
+    command -v make >/dev/null 2>&1 || error "Please install make (needed to build lc3tools)"
     command -v rustc >/dev/null 2>&1 || error "Please install Rust >= 1.33"
     command -v cargo >/dev/null 2>&1 || error "Please install Cargo (Rust's package manager)"
 }
 
+function ensure_lc3_tools {
+    if [ ! -f "${LC3AS}" ]; then
+        notice "LC3 assembler not found, trying to build"
+        (cd "${LC3AS_DIR}" && ./configure && make)
+    fi
+}
+
+function task_assemble_tests {
+    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+        ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
+    done
+}
+
 function cmd_test {
+    task_assemble_tests
     cargo test "$@"
 }
 
@@ -29,6 +44,7 @@ function cmd_usage {
 }
 
 ensure_env
+ensure_lc3_tools
 
 command=""
 if (( $# > 0 )); then
@@ -38,5 +54,6 @@ fi
 
 case "${command}" in
     test) cmd_test "$@" ;;
+    assemble-tests) task_assemble_tests "$@" ;;
     *) cmd_usage
 esac
