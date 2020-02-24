@@ -68,6 +68,9 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
         .into_iter()
         .for_each(|line| into_emittable(&mut state, line));
 
+    // The origin (i.e. where the code should be loaded in memory) goes first
+    buffer.push(ast.origin);
+
     // The second pass emits the actual byte code
     for emittable in &state.emittables {
         buffer.extend(&emittable.emit(&state));
@@ -114,12 +117,8 @@ pub fn test_foobar() {
     }
 
     let ast = r.unwrap().0;
-//    println!("{:?}", &ast);
+    let actual = assemble(ast);
 
-
-
-    let asd = assemble(ast);
-    asd.iter().for_each(|x| println!("{:X} {:X}", (x >> 8) & 0xFF as u16, x & 0xFF));
-
-    assert_eq!("foo","bar");
+    let expected: Vec<u16> = vec![0x3000, 0x1027, 0x1267, 0x1442, 0xf025];
+    assert_eq!(expected, actual);
 }

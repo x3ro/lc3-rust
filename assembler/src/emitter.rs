@@ -27,9 +27,10 @@ impl Emittable {
             }
 
             Instruction { opcode: Opcode::Add, operands} => {
-                let opcode:u16 = 0b0001;
+                const OPCODE:u16 = 0b0001;
 
                 let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= OPCODE << 12;
 
                 match self.instruction.operands.as_slice() {
                     [Operand::Register {r: dr}, Operand::Register {r: sr1}, Operand::Register {r: sr2}] => {
@@ -51,7 +52,20 @@ impl Emittable {
                 };
 
                 vec![result]
-                //vec![(opcode << 12) | ((register.to_owned() as u16) << 9) | offset]
+            }
+
+            Instruction { opcode: Opcode::Halt, operands} => {
+                const OPCODE:u16 = 0b1111;
+
+                if operands.len() > 0 {
+                    panic!("HALT was used with operands, but does not take any")
+                }
+
+                let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= OPCODE << 12;
+                result |= 0x25;
+
+                vec![result]
             }
 
             Instruction { opcode: Opcode::Fill, operands} => {

@@ -34,8 +34,10 @@ impl Operand {
 #[derive(Debug,PartialEq)]
 pub enum Opcode {
     Add,
-    Halt,
     Ld,
+
+    // Traps with explicit names
+    Halt,
 
     // Pseudo-opcodes
     Fill,
@@ -47,10 +49,13 @@ impl TryFrom<&String> for Opcode {
     fn try_from(value: &String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
-            "halt" => Ok(Opcode::Halt),
             "ld" => Ok(Opcode::Ld),
+
+            "halt" => Ok(Opcode::Halt),
+
             ".fill" => Ok(Opcode::Fill),
             ".stringz" => Ok(Opcode::Stringz),
+
             x => Err(format!("Unknown opcode '{}'", x))
         }
     }
