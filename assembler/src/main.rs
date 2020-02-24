@@ -85,6 +85,12 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
         }
     }
 
+    if errors.len() > 0 {
+        for error in errors {
+            println!("Error: {}", error.1);
+        }
+    }
+
     buffer
 }
 

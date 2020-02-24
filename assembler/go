@@ -35,8 +35,36 @@ function task_assemble_tests {
 }
 
 function cmd_test {
+    #set -x
+    cd $SCRIPT_DIR
+    cargo build
+    git clean -fdx -- tests/ 2>&1 1>/dev/null
+
     task_assemble_tests
-    cargo test "$@"
+    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+      target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out
+    done
+
+    echo ""
+    notice "Starting test-run"
+
+    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+      local our_file="${asm_file}.out"
+      local their_file="$SCRIPT_DIR/tests/$(basename $asm_file .asm).obj"
+
+      local ours="$(md5 $our_file)"
+      local theirs="$(md5 $their_file)"
+
+      if [ "$ours" != "$theirs" ]; then
+        echo "Results differed for $asm_file"
+
+        echo "Ours"
+        hexdump $our_file
+
+        echo "Theirs"
+        hexdump $their_file
+      fi
+    done
 }
 
 function cmd_usage {

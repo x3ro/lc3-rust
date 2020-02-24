@@ -264,7 +264,7 @@ fn string_operand<I>() -> impl Parser<Input = I, Output = Operand>
 {
     (
         char('"'),
-        many1::<Vec<char>, _>(choice((
+        many::<Vec<char>, _>(choice((
             escaped_character(),
             satisfy(|c| c != '"'),
         ))),
