@@ -38,7 +38,7 @@ impl Lc3State {
     }
 }
 
-pub fn into_emittable(state: &mut Lc3State, line: Line) -> &mut Lc3State {
+pub fn into_emittable(state: &mut Lc3State, line: Line) {
     if let Line { label, instruction: Some(instruction), .. } = line {
         let e = Emittable::from(instruction, state.offset);
 
@@ -49,22 +49,26 @@ pub fn into_emittable(state: &mut Lc3State, line: Line) -> &mut Lc3State {
         state.offset += e.size();
         state.emittables.push(e);
     }
-    state
 }
 
-pub fn foobar(ast: Lc3File) -> Vec<u16> {
-//    let base_addr = ast.origin;
-
+pub fn assemble(ast: Lc3File) -> Vec<u16> {
     let mut buffer:Vec<u16> = vec![];
 
-    let mut state = Lc3State { offset: ast.origin, emittables: vec![], labels: HashMap::new() };
+    let mut state = Lc3State {
+        offset: ast.origin,
+        emittables: vec![],
+        labels: HashMap::new()
+    };
+
+    // In this first pass, we record all labels and the offset of each instruction (i.e.
+    // the value of the program counter when this instruction is executed).
+    // in the to-be-assembled file, which is needed to calculate program counter based
+    // offset parameters inside the file.
     ast.lines
         .into_iter()
-        .fold(&mut state, |state, line| into_emittable(state, line));
+        .for_each(|line| into_emittable(&mut state, line));
 
-
-//    println!("{:#?}", state.labels);
-
+    // The second pass emits the actual byte code
     for emittable in &state.emittables {
         buffer.extend(&emittable.emit(&state));
     }
@@ -74,31 +78,37 @@ pub fn foobar(ast: Lc3File) -> Vec<u16> {
 
 #[test]
 pub fn test_foobar() {
-
-
     let input = r#"
 .ORIG x3000
-LD R1, SOME_X
-LD R2, SOME_Y
-;ADD R0, R0, R1 ; = 0 + 16 = 16
-LD R2, SOME_Y
-;HALT
-LD R2, SOME_Y
-;ADD R0, R0, R2 ; = 16 - 16 = 0
-LD R2, SOME_Y
-;HALT
-LD R2, SOME_Y
-;ADD R0, R0, R2 ;  = 0 - 16 = -16
-LD R2, SOME_Y
-;HALT
-LD R2, SOME_Y
-SOME_X    .FILL x10   ;  16
-SOME_Y    .FILL xFFF0 ; -16
+    LD R1, SOME_X
+    LD R2, SOME_Y
+    ;ADD R0, R0, R1 ; = 0 + 16 = 16
+    LD R2, SOME_Y
+    ;HALT
+    LD R2, SOME_Y
+    ;ADD R0, R0, R2 ; = 16 - 16 = 0
+    LD R2, SOME_Y
+    ;HALT
+    LD R2, SOME_Y
+    ;ADD R0, R0, R2 ;  = 0 - 16 = -16
+    LD R2, SOME_Y
+    ;HALT
+    LD R2, SOME_Y
+    SOME_X    .FILL x10   ;  16
+    SOME_Y    .FILL xFFF0 ; -16
 .END
-
 "#;
 
-    let r = lc3_file().easy_parse(State::new(input));
+    let other = r#"
+.ORIG x3000
+    ADD R0, R0, #7
+    ADD R1, R1, #7
+    ADD R2, R1, R2
+    HALT
+.END
+"#;
+
+    let r = lc3_file().easy_parse(State::new(other));
     if r.is_err() {
         println!("{:#?}", r);
     }
@@ -108,7 +118,7 @@ SOME_Y    .FILL xFFF0 ; -16
 
 
 
-    let asd = foobar(ast);
+    let asd = assemble(ast);
     asd.iter().for_each(|x| println!("{:X} {:X}", (x >> 8) & 0xFF as u16, x & 0xFF));
 
     assert_eq!("foo","bar");
