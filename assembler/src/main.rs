@@ -16,8 +16,6 @@ use combine::stream::state::State;
 
 use std::collections::HashMap;
 use emitter::Emittable;
-use std::fs::File;
-use std::io::{Error, ErrorKind};
 
 type Offset = u16;
 

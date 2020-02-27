@@ -38,7 +38,7 @@ function cmd_test {
     #set -x
     cd $SCRIPT_DIR
     cargo build
-    git clean -fdx -- tests/ 2>&1 1>/dev/null
+    git clean -fdx -e '*.asm' -- tests/ 2>&1 1>/dev/null
 
     task_assemble_tests
     for asm_file in $SCRIPT_DIR/tests/*.asm; do

@@ -2,7 +2,7 @@ use combine::{many1, Parser, sep_by, skip_many, satisfy, skip_many1, attempt, ma
 use combine::char::{space,hex_digit,digit,upper,newline,char,string_cmp};
 
 use combine::error::{ParseError, StreamError};
-use combine::stream::{StreamErrorFor, state::State};
+use combine::stream::{StreamErrorFor};
 
 use num_traits::FromPrimitive;
 use std::convert::TryFrom;
@@ -503,8 +503,8 @@ pub fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
         skip_many(space()),
         line(dot_origin()),
         many::<Vec<Line>,_>(line(attempt(assembler_line()))), // Attempt is needed here, because .END could be either a pseudo-operation without label or the dot command :/
-        line(dot_command("END")),
-        skip_many(space()),
+        skip_many(space_no_line_ending()),
+        dot_command("END"),
     )
         .map(|(_,origin,lines,_,_)| Lc3File { origin, lines })
 }
