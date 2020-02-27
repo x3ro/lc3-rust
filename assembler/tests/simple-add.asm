@@ -3,5 +3,5 @@
     ADD R1, R1, #7
     ADD R2, R1, R2
     HALT
-    .STRINGZ ""
+    .STRINGZ "needed or lc3tools assembler segfaults"
 .END

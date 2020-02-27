@@ -42,7 +42,7 @@ function cmd_test {
 
     task_assemble_tests
     for asm_file in $SCRIPT_DIR/tests/*.asm; do
-      target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out
+      target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
     done
 
     echo ""
@@ -52,8 +52,8 @@ function cmd_test {
       local our_file="${asm_file}.out"
       local their_file="$SCRIPT_DIR/tests/$(basename $asm_file .asm).obj"
 
-      local ours="$(md5 $our_file)"
-      local theirs="$(md5 $their_file)"
+      local ours="$(md5 -q $our_file)"
+      local theirs="$(md5 -q $their_file)"
 
       if [ "$ours" != "$theirs" ]; then
         echo "Results differed for $asm_file"
@@ -63,6 +63,8 @@ function cmd_test {
 
         echo "Theirs"
         hexdump $their_file
+      else
+        echo "✓ ${asm_file}"
       fi
     done
 }

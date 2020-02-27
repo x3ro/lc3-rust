@@ -87,7 +87,7 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
 
     if errors.len() > 0 {
         for error in errors {
-            println!("Error: {}", error.1);
+            panic!("Emitting error: {}", error.1);
         }
     }
 
@@ -114,7 +114,7 @@ pub fn main() -> std::io::Result<()> {
 
     let r = lc3_file().easy_parse(State::new(contents.as_str()));
     if r.is_err() {
-        println!("{:#?}", r);
+        panic!("there was an error: {:?}", r);
     }
 
     let ast = r.unwrap().0;
@@ -139,7 +139,7 @@ pub fn test_basic_bytecode_emitting() {
 //    ;ADD R0, R0, R1 ; = 0 + 16 = 16
 //    LD R2, SOME_Y
 //    ;HALT
-//    LD R2, SOME_Y
+//    LD R2, SOME_Y1
 //    ;ADD R0, R0, R2 ; = 16 - 16 = 0
 //    LD R2, SOME_Y
 //    ;HALT

@@ -84,6 +84,24 @@ impl Emittable {
                 Ok(res)
             }
 
+            Instruction { opcode: Opcode::Stringz, operands} => {
+                let mut result: Vec<u16> = vec![];
+
+                operands
+                    .iter()
+                    .for_each(|x| match x {
+                        Operand::String { value} => {
+                            for x in value.as_bytes() {
+                                result.push(*x as u16)
+                            }
+                        }
+                        _ => panic!("Only string operands are allowed for .STRINGZ in {:?}", self.instruction)
+                    });
+
+                result.push(0);
+                Ok(result)
+            }
+
             _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
