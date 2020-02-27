@@ -8,3 +8,4 @@ target/
 *.obj
 *.vconst
 .DS_Store
+*.asm.out
