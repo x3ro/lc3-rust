@@ -185,7 +185,7 @@ fn parse_immediate() {
     assert_eq!(Ok((Operand::Immediate { value: 255}, "")), immediate().easy_parse("xFF"));
 }
 
-fn operand_label<I>() -> impl Parser<Input = I, Output = Operand>
+fn operand_label_reference<I>() -> impl Parser<Input = I, Output = Operand>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
@@ -204,7 +204,7 @@ fn operand<I>() -> impl Parser<Input = I, Output = Operand>
         choice((
             register(),
             immediate(),
-            operand_label(),
+            operand_label_reference(),
             string_operand(),
         ))
     )
