@@ -109,14 +109,14 @@ pub fn fulleverything(contents: &Box<String>) -> Result<Vec<u8>, Box<dyn Error>>
     Ok(actual)
 }
 
-pub fn main() {
-    let res = real_main();
-    if res.is_err() {
-        println!("{:?}", res.unwrap_err());
-    }
-}
+//pub fn main() {
+//    let res = real_main();
+//    if res.is_err() {
+//        println!("{:?}", res.unwrap_err());
+//    }
+//}
 
-pub fn real_main<'a>() -> Result<(), Box<dyn Error + 'a>> {
+pub fn main() -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs::File;
     use std::io::prelude::*;

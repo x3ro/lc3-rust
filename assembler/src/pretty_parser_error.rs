@@ -26,7 +26,7 @@ pub fn format_parser_error(contents: &str, err: combine::easy::Errors<char, &str
     use combine::easy::Info::*;
 
     let mut msg = Box::new(String::new());
-    msg.push_str(format!("\nEncountered an error parsing file around line {} column {}:\n\n",
+    msg.push_str(format!("Encountered an issue while parsing file around line {} column {}:\n\n",
                          err.position.line,
                          err.position.column).as_str());
 
