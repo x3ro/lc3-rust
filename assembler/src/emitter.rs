@@ -102,7 +102,7 @@ impl Emittable {
                 Ok(result)
             }
 
-            _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
+            //_ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
 

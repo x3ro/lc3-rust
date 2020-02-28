@@ -6,6 +6,7 @@ extern crate num_derive;
 mod tokens;
 mod parser;
 mod emitter;
+mod pretty_parser_error;
 
 use tokens::*;
 use parser::lc3_file;
@@ -16,6 +17,8 @@ use combine::stream::state::State;
 
 use std::collections::HashMap;
 use emitter::Emittable;
+use std::error::Error;
+use pretty_parser_error::format_parser_error;
 
 type Offset = u16;
 
@@ -92,7 +95,28 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
     buffer
 }
 
-pub fn main() -> std::io::Result<()> {
+pub fn fulleverything(contents: &Box<String>) -> Result<Vec<u8>, Box<dyn Error>> {
+    let r = lc3_file()
+        .easy_parse(State::new(contents.as_str()))
+        .map_err(|err| format_parser_error(contents.as_str(), err))?;
+
+    let ast = r.0;
+    let actual : Vec<u8> = assemble(ast)
+        .iter()
+        .flat_map(|x| vec![(x >> 8) as u8, (x & 0xff) as u8] )
+        .collect();
+
+    Ok(actual)
+}
+
+pub fn main() {
+    let res = real_main();
+    if res.is_err() {
+        println!("{:?}", res.unwrap_err());
+    }
+}
+
+pub fn real_main<'a>() -> Result<(), Box<dyn Error + 'a>> {
     use std::env;
     use std::fs::File;
     use std::io::prelude::*;
@@ -107,22 +131,13 @@ pub fn main() -> std::io::Result<()> {
     let obj_output = args.get(2).unwrap();
 
     let mut infile = File::open(asm_input)?;
-    let mut contents = String::new();
+    let mut contents = Box::new(String::new());
     infile.read_to_string(&mut contents)?;
 
-    let r = lc3_file().easy_parse(State::new(contents.as_str()));
-    if r.is_err() {
-        panic!("there was an error: {:?}", r);
-    }
-
-    let ast = r.unwrap().0;
-    let actual : Vec<u8> = assemble(ast)
-        .iter()
-        .flat_map(|x| vec![(x >> 8) as u8, (x & 0xff) as u8] )
-        .collect();
+    let bytecode = fulleverything(&contents)?;
 
     let mut outfile = File::create(obj_output)?;
-    outfile.write_all(actual.as_slice())?;
+    outfile.write_all(bytecode.as_slice())?;
 
     Ok(())
 }
