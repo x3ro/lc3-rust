@@ -72,6 +72,38 @@ impl Emittable {
                 Ok(vec![result])
             }
 
+            Instruction { opcode: Opcode::And, operands} => {
+                const OPCODE:u16 = 0b0101;
+                let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= OPCODE << 12;
+
+                match operands.as_slice() {
+                    [Operand::Register { r: dr },
+                     Operand::Register { r: sr1 },
+                     Operand::Register { r: sr2 }] => {
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (sr1.to_owned() as u16) << 6;
+                        result |= sr2.to_owned() as u16;
+                    }
+
+                    [Operand::Register { r: dr },
+                     Operand::Register { r: sr1 },
+                     Operand::Immediate { value: imm5 }] => {
+                        if imm5 > &31 {
+                            return Err("Immediate value too large, must fit into 5 bits".into());
+                        }
+
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (sr1.to_owned() as u16) << 6;
+                        result |= 1 << 5;
+                        result |= (imm5 & 0b11111) as u16;
+                    }
+
+                    _ => return Err(format!("Unsupported operands for AND: {:?}", self.instruction))
+                }
+                Ok(vec![result])
+            }
+
             Instruction { opcode: Opcode::Fill, operands} => {
                 let res = operands
                     .iter()

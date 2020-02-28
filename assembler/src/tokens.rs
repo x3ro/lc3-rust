@@ -35,6 +35,7 @@ impl Operand {
 pub enum Opcode {
     Add,
     Ld,
+    And,
 
     // Traps with explicit names
     Halt,
@@ -50,13 +51,14 @@ impl TryFrom<&String> for Opcode {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
             "ld" => Ok(Opcode::Ld),
+            "and" => Ok(Opcode::And),
 
             "halt" => Ok(Opcode::Halt),
 
             ".fill" => Ok(Opcode::Fill),
             ".stringz" => Ok(Opcode::Stringz),
 
-            x => Err(format!("Unknown opcode '{}'", x))
+            _ => Err(format!("Unknown opcode '{}'", value))
         }
     }
 }
