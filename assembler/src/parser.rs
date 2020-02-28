@@ -5,9 +5,9 @@ use combine::error::{ParseError, StreamError};
 use combine::stream::{StreamErrorFor};
 
 use num_traits::FromPrimitive;
-use std::convert::TryFrom;
 
 use tokens::*;
+use combine::parser::char::lower;
 
 fn space_no_line_ending<I>() -> impl Parser<Input = I, Output = char>
     where
@@ -284,9 +284,16 @@ fn opcode<I>() -> impl Parser<Input = I, Output = Opcode>
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many1::<String,_>(upper())
-        .and_then(|s|
-            Opcode::try_from(&s)
+    (
+        many1::<String,_>(upper()),
+        optional(many1::<String,_>(choice((
+            char('n'),
+            char('z'),
+            char('p'),
+        )))),
+    )
+        .and_then(|(op,modifiers)|
+            Opcode::from(&op, &modifiers)
                 .map_err(|x| StreamErrorFor::<I>::unexpected_message(x))
         )
 }
@@ -303,7 +310,7 @@ fn pseudo_opcode<I>() -> impl Parser<Input = I, Output = Opcode>
         .and_then(|(_,s)|
             // TODO: This error message doesn't show, likely because we're using attempt()
             // in lc3_file()... investigate further.
-            Opcode::try_from(&format!(".{}", s))
+            Opcode::from(&format!(".{}", s), &None)
                 .map_err(|x| StreamErrorFor::<I>::unexpected_message(x))
         )
 }
@@ -365,7 +372,7 @@ fn label<I>() -> impl Parser<Input = I, Output = String>
 {
     many1(choice((upper(), char('_'))))
         .and_then(|label: String|
-            match Opcode::try_from(&label) {
+            match Opcode::from(&label, &None) {
                 Err(_) => Ok(label),
                 Ok(_) => Err(format!("Labels must not have the same name as opcodes. Here: '{}'", label))
             }.map_err(|e| StreamErrorFor::<I>::message_message(e))

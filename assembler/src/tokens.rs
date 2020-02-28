@@ -1,5 +1,4 @@
 use num_traits::FromPrimitive;
-use std::convert::TryFrom;
 
 #[derive(Debug,PartialEq,Copy,Clone,num_derive::FromPrimitive)]
 pub enum Registers {
@@ -36,6 +35,7 @@ pub enum Opcode {
     Add,
     Ld,
     And,
+    Br { modifiers: Option<String> },
 
     // Traps with explicit names
     Halt,
@@ -45,13 +45,13 @@ pub enum Opcode {
     Stringz,
 }
 
-impl TryFrom<&String> for Opcode {
-    type Error = String;
-    fn try_from(value: &String) -> Result<Self, Self::Error> {
+impl Opcode {
+    pub fn from(value: &String, modifiers: &Option<String>) -> Result<Self, String> {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
             "ld" => Ok(Opcode::Ld),
             "and" => Ok(Opcode::And),
+            "br" => Ok(Opcode::Br { modifiers: modifiers.clone() }),
 
             "halt" => Ok(Opcode::Halt),
 

@@ -79,16 +79,16 @@ impl Emittable {
 
                 match operands.as_slice() {
                     [Operand::Register { r: dr },
-                     Operand::Register { r: sr1 },
-                     Operand::Register { r: sr2 }] => {
+                    Operand::Register { r: sr1 },
+                    Operand::Register { r: sr2 }] => {
                         result |= (dr.to_owned() as u16) << 9;
                         result |= (sr1.to_owned() as u16) << 6;
                         result |= sr2.to_owned() as u16;
                     }
 
                     [Operand::Register { r: dr },
-                     Operand::Register { r: sr1 },
-                     Operand::Immediate { value: imm5 }] => {
+                    Operand::Register { r: sr1 },
+                    Operand::Immediate { value: imm5 }] => {
                         if imm5 > &31 {
                             return Err("Immediate value too large, must fit into 5 bits".into());
                         }
@@ -100,6 +100,41 @@ impl Emittable {
                     }
 
                     _ => return Err(format!("Unsupported operands for AND: {:?}", self.instruction))
+                }
+                Ok(vec![result])
+            }
+
+            Instruction { opcode: Opcode::Br { modifiers }, operands} => {
+                const OPCODE:u16 = 0b0000;
+                let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= OPCODE << 12;
+
+
+
+                match operands.as_slice() {
+                    [Operand::Label { name }] => {
+                        println!("{:?}", state.labels);
+                        let imm9_opt = state.labels.get(name);
+                        if imm9_opt.is_none() {
+                            return Err(format!("Label used for BR instruction not found: {}", name).into());
+                        }
+
+                        let imm9 = ((*imm9_opt.unwrap() as i32) - (state.offset as i32));
+                        println!("imm9: {}", imm9);
+                        if imm9 > 511 {
+                            return Err(format!("The label {} exists, but is too far away from the BR instruction (max 511 bytes)", name).into());
+                        }
+
+                        if let Some(mods) = modifiers {
+                            result |= (mods.contains("n") as u16) << 11;
+                            result |= (mods.contains("z") as u16) << 10;
+                            result |= (mods.contains("p") as u16) << 9;
+                        }
+
+                        result |= imm9.to_owned() as u16;
+                    }
+
+                    _ => return Err(format!("Unsupported operands for BR: {:?}", self.instruction))
                 }
                 Ok(vec![result])
             }
@@ -134,7 +169,7 @@ impl Emittable {
                 Ok(result)
             }
 
-            //_ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
+            _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
 

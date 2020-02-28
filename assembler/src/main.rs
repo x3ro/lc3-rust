@@ -42,7 +42,7 @@ impl Lc3State {
     }
 }
 
-pub fn into_emittable(state: &mut Lc3State, line: Line) {
+pub fn into_emittable(state: &mut Lc3State, line: Line, floating_labels: &mut Vec<String>) {
     if let Line { label, instruction: Some(instruction), .. } = line {
         let e = Emittable::from(instruction, state.offset);
 
@@ -50,8 +50,18 @@ pub fn into_emittable(state: &mut Lc3State, line: Line) {
             state.labels.insert(name, state.offset);
         }
 
+        if floating_labels.len() > 0 {
+            for name in floating_labels.iter() {
+                state.labels.insert(name.clone(), state.offset);
+            }
+            floating_labels.clear();
+        }
+
         state.offset += e.size();
         state.emittables.push(e);
+    } else if let Line { label: Some(label), .. } = line {
+        // A label without instruction, save this for later
+        floating_labels.push(label);
     }
 }
 
@@ -69,9 +79,10 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
     // the value of the program counter when this instruction is executed).
     // in the to-be-assembled file, which is needed to calculate program counter based
     // offset parameters inside the file.
+    let mut floating_labels: Vec<String> = vec![];
     ast.lines
         .into_iter()
-        .for_each(|line| into_emittable(&mut state, line));
+        .for_each(|line| into_emittable(&mut state, line, &mut floating_labels));
 
     // The origin (i.e. where the code should be loaded in memory) goes first
     buffer.push(ast.origin);
