@@ -109,13 +109,6 @@ pub fn fulleverything(contents: &Box<String>) -> Result<Vec<u8>, Box<dyn Error>>
     Ok(actual)
 }
 
-//pub fn main() {
-//    let res = real_main();
-//    if res.is_err() {
-//        println!("{:?}", res.unwrap_err());
-//    }
-//}
-
 pub fn main() -> Result<(), Box<dyn Error>> {
     use std::env;
     use std::fs::File;
@@ -125,7 +118,6 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     if args.len() < 3 {
         println!("Usage: lc3as <input file> <output file>");
         return Ok(())
-        //return Err(Error::new(ErrorKind::Other, "Please provide a source file as the only parameter"));
     }
     let asm_input = args.get(1).unwrap();
     let obj_output = args.get(2).unwrap();
