@@ -30,13 +30,22 @@ pub struct Lc3State {
 }
 
 impl Lc3State {
-    pub fn relative_offset(&self, from_offset: Offset, to_label: &String) -> u16 {
+    pub fn relative_offset(&self, from_offset: u16, to_label: &String) -> Result<i16, String> {
         match self.labels.get(to_label) {
-            None => panic!("Label '{}' referenced but never defined", to_label),
+            None => Err(format!("Label '{}' referenced but never defined", to_label)),
             Some(v) => {
+                let label_offset = v.to_owned() as i32;
+                let from_offset_i32 = from_offset as i32;
+
                 // -1 Because offset is counted from the next instruction
                 // /16 because the relative offset is given in bytes, not bits
-                ((v - from_offset)/16 - 1) as u16
+                let res = ((label_offset - from_offset_i32)/16 - 1);
+
+                if res < -256 || res > 255 {
+                    Err(format!("Label '{}' too far away from usage ({}), must be within [-256, 255]", to_label, res))
+                } else {
+                    Ok(res as i16)
+                }
             }
         }
     }

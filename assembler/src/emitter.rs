@@ -23,7 +23,12 @@ impl Emittable {
                 match operands.as_slice() {
                     [Operand::Register {r: dr}, Operand::Label {name}] => {
                         result |= (dr.to_owned() as u16) << 9;
-                        result |= state.relative_offset(self.offset, name);
+
+                        let offset = state.relative_offset(self.offset, name);
+                        match offset {
+                            Ok(x) => result |= (x as u16) & 0b111111111,
+                            Err(x) => return Err(x)
+                        }
                     },
 
                     _ => return Err(format!("Unsupported operands for LD: {:?}", self.instruction))
@@ -109,20 +114,11 @@ impl Emittable {
                 let mut result: u16 = 0b0000_0000_0000_0000;
                 result |= OPCODE << 12;
 
-
-
                 match operands.as_slice() {
                     [Operand::Label { name }] => {
-                        println!("{:?}", state.labels);
                         let imm9_opt = state.labels.get(name);
                         if imm9_opt.is_none() {
                             return Err(format!("Label used for BR instruction not found: {}", name).into());
-                        }
-
-                        let imm9 = ((*imm9_opt.unwrap() as i32) - (state.offset as i32));
-                        println!("imm9: {}", imm9);
-                        if imm9 > 511 {
-                            return Err(format!("The label {} exists, but is too far away from the BR instruction (max 511 bytes)", name).into());
                         }
 
                         if let Some(mods) = modifiers {
@@ -131,7 +127,11 @@ impl Emittable {
                             result |= (mods.contains("p") as u16) << 9;
                         }
 
-                        result |= imm9.to_owned() as u16;
+                        let offset = state.relative_offset(self.offset, name);
+                        match offset {
+                            Ok(x) => result |= (x as u16) & 0b111111111,
+                            Err(x) => return Err(x)
+                        }
                     }
 
                     _ => return Err(format!("Unsupported operands for BR: {:?}", self.instruction))
