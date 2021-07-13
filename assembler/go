@@ -19,6 +19,7 @@ function ensure_env {
     command -v make >/dev/null 2>&1 || error "Please install make (needed to build lc3tools)"
     command -v rustc >/dev/null 2>&1 || error "Please install Rust >= 1.33"
     command -v cargo >/dev/null 2>&1 || error "Please install Cargo (Rust's package manager)"
+    command -v binwalk >/dev/null 2>&1 || error "Please install binwalk"
 }
 
 function ensure_lc3_tools {
@@ -57,12 +58,8 @@ function cmd_test {
 
       if [ "$ours" != "$theirs" ]; then
         echo "Results differed for $asm_file"
-
-        echo "Ours"
-        hexdump $our_file
-
-        echo "Theirs"
-        hexdump $their_file
+        echo "Our file: $our_file"
+        binwalk --hexdump "$our_file" "$their_file"
       else
         echo "✓ ${asm_file}"
       fi
