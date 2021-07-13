@@ -107,8 +107,9 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
 
     if errors.len() > 0 {
         for error in errors {
-            panic!("Emitting error: {}", error.1);
+            println!("Emitting error: {}", error.1);
         }
+        panic!("There were errors emitting the byte code :(")
     }
 
     buffer
