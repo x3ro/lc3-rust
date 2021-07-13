@@ -9,9 +9,11 @@ pub struct Emittable {
 }
 
 impl Emittable {
+    // This is the size in LC3 words, which are 16 bits in size.
+    // So 16 bits = size 1, 32 bits = size 2, ...
     pub fn size(&self) -> u16 {
-        // TODO: not all emittables are 16 bits (e.g. stringz or fill)
-        16
+        // TODO: not all emittables are one word long (e.g. stringz or fill)
+        1
     }
 
     pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
