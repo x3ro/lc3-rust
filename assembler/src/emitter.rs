@@ -188,6 +188,20 @@ impl Emittable {
                 Ok(vec![0b1000_0000_0000_0000])
             }
 
+            Instruction { opcode: Opcode::St, operands} => {
+                let mut result: u16 = 0b0011_0000_0000_0000;
+
+                match operands.as_slice() {
+                    [Operand::Register { r: sr }, Operand::Label { name}] => {
+                        result |= (sr.to_owned() as u16) << 9;
+                        result |= state.relative_offset(self.offset, name, 9)?  ;
+                    },
+                    _ => return self.unsupported_operands_err()
+                }
+
+                Ok(vec![result])
+            }
+
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 
