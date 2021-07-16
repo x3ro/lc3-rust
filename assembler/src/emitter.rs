@@ -332,7 +332,7 @@ impl Emittable {
                         Operand::Immediate { value } => *value as u16,
                         Operand::Label { name } => {
                             match state.labels.get(name) {
-                                Some(x) => (x.to_owned() as u16) & 0b111111111,
+                                Some(x) => x.to_owned() as u16,
                                 _ => panic!("Did not find label with name '{:?}' in .FILL", name)
                             }
                         },
