@@ -209,6 +209,21 @@ impl Emittable {
                 Ok(vec![result])
             }
 
+            Instruction { opcode: Opcode::Str, operands} => {
+                let mut result: u16 = 0b0111_0000_0000_0000;
+
+                match operands.as_slice() {
+                    [Operand::Register { r: sr }, Operand::Register { r: base_r }, Operand::Immediate { value}] => {
+                        result |= (sr.to_owned() as u16) << 9;
+                        result |= (base_r.to_owned() as u16) << 6;
+                        result |= self.clamp(value.to_owned(), 6)? as u16;
+                    },
+                    _ => return self.unsupported_operands_err()
+                }
+
+                Ok(vec![result])
+            }
+
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 

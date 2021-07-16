@@ -47,7 +47,7 @@ pub enum Opcode {
     Rti,
     St,
     Sti,
-    // Str,
+    Str,
     // Trap,
 
     // Traps with explicit names
@@ -81,6 +81,7 @@ impl Opcode {
             "rti" => Ok(Opcode::Rti),
             "st" => Ok(Opcode::St),
             "sti" => Ok(Opcode::Sti),
+            "str" => Ok(Opcode::Str),
 
             "halt" => Ok(Opcode::Halt),
 
