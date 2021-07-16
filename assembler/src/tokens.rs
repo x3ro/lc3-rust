@@ -39,7 +39,7 @@ pub enum Opcode {
     Jsr,
     Jsrr,
     Ld,
-    // Ldi,
+    Ldi,
     // Ldr,
     // Lea,
     // Not,
@@ -73,6 +73,7 @@ impl Opcode {
             "jsr" => Ok(Opcode::Jsr),
             "jsrr" => Ok(Opcode::Jsrr),
             "ld" => Ok(Opcode::Ld),
+            "ldi" => Ok(Opcode::Ldi),
             "ret" => Ok(Opcode::Ret),
 
             "halt" => Ok(Opcode::Halt),

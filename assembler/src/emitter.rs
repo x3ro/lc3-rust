@@ -30,9 +30,14 @@ impl Emittable {
 
     pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
         match &self.instruction {
-            Instruction { opcode: Opcode::Ld, operands} => {
-                const OPCODE:u16 = 0b0010;
-                let mut result: u16 = OPCODE << 12;
+            Instruction { opcode: Opcode::Ld | Opcode::Ldi, operands} => {
+                let opcode:u16 = if self.instruction.opcode == Opcode::Ld {
+                    0b0010
+                } else {
+                    0b1010
+                };
+
+                let mut result: u16 = opcode << 12;
 
                 match operands.as_slice() {
                     [Operand::Register {r: dr}, Operand::Label {name}] => {
@@ -45,7 +50,7 @@ impl Emittable {
                         }
                     },
 
-                    _ => return Err(format!("Unsupported operands for LD: {:?}", self.instruction))
+                    _ => return Err(format!("Unsupported operands for {:?}: {:?}", self.instruction.opcode, self.instruction.operands))
                 };
 
                 Ok(vec![result])
