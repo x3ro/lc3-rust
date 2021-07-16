@@ -45,11 +45,13 @@ impl Emittable {
 
     pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
         match &self.instruction {
-            Instruction { opcode: Opcode::Ld | Opcode::Ldi, operands} => {
+            Instruction { opcode: Opcode::Ld | Opcode::Ldi | Opcode::Lea, operands} => {
                 let opcode:u16 = if self.instruction.opcode == Opcode::Ld {
                     0b0010
-                } else {
+                } else if self.instruction.opcode == Opcode::Ldi {
                     0b1010
+                } else {
+                    0b1110
                 };
 
                 let mut result: u16 = opcode << 12;
