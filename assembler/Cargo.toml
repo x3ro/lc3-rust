@@ -13,5 +13,5 @@ num-traits = "0.2"
 num-derive = "0.2"
 
 [dependencies.combine]
-version = "^3.8"
+version = "^3.8.1"
 #features = ["verbose-errors"]
