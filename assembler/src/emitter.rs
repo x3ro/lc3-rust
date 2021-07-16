@@ -12,8 +12,20 @@ impl Emittable {
     // This is the size in LC3 words, which are 16 bits in size.
     // So 16 bits = size 1, 32 bits = size 2, ...
     pub fn size(&self) -> u16 {
-        // TODO: not all emittables are one word long (e.g. stringz or fill)
-        1
+        match &self.instruction {
+            Instruction { opcode: Opcode::Stringz, operands} => {
+                match operands.as_slice() {
+                    [Operand::String { value }] =>
+                        // +1 because STRINGZ emits a zero-terminated string, and value.len()
+                        // will not include the \0 at the end (this is added when emitting)
+                        return value.len() as u16 + 1,
+                    _ =>
+                        panic!("Only one string operand is .STRINGZ in {:?}", self.instruction)
+                }
+            },
+            // TODO: not all emittables are one word long (e.g. stringz or fill)
+            _ => 1
+        }
     }
 
     pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
@@ -82,7 +94,7 @@ impl Emittable {
             }
 
             // RET is just an alias for `JMP R7`
-            Instruction { opcode: Opcode::Ret, operands} => {
+            Instruction { opcode: Opcode::Ret, .. } => {
                 Emittable::from(
                  Instruction {
                         opcode: Opcode::Jmp,
@@ -173,6 +185,12 @@ impl Emittable {
                     .iter()
                     .map(|x| match x {
                         Operand::Immediate { value } => *value as u16,
+                        Operand::Label { name } => {
+                            match state.labels.get(name) {
+                                Some(x) => (x.to_owned() as u16) & 0b111111111,
+                                _ => panic!("Did not find label with name '{:?}' in .FILL", name)
+                            }
+                        },
                         _ => panic!("Only immediate operands are allowed for fill in {:?}", self.instruction)
                     })
                     .collect();
@@ -198,7 +216,7 @@ impl Emittable {
                 Ok(result)
             }
 
-            _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
+            // _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
 

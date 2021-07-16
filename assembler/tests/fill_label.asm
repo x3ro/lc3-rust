@@ -1,0 +1,14 @@
+.ORIG x0000
+START
+	.FILL BAD_TRAP	; x00
+	.FILL BAD_TRAP	; x01
+	.FILL BAD_TRAP	; x02
+	.FILL BAD_TRAP	; x03
+	.FILL BAD_TRAP	; x04
+
+BAD_TRAP
+    LD R0, START
+    HALT
+
+HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
+.END
