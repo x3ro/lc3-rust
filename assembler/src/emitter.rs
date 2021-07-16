@@ -367,7 +367,7 @@ impl Emittable {
                 match operands.as_slice() {
                     [Operand::Label { name }] => {
                         let x = name.to_owned().parse::<u16>().unwrap();
-                        for _ in 1..x {
+                        for _ in 0..x {
                             result.push(0)
                         }
                     }
