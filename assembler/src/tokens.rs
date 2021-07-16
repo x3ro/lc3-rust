@@ -42,7 +42,7 @@ pub enum Opcode {
     Ldi,
     Ldr,
     Lea,
-    // Not,
+    Not,
     Ret,
     // Rti,
     // St,
@@ -76,6 +76,7 @@ impl Opcode {
             "ldi" => Ok(Opcode::Ldi),
             "ldr" => Ok(Opcode::Ldr),
             "lea" => Ok(Opcode::Lea),
+            "not" => Ok(Opcode::Not),
             "ret" => Ok(Opcode::Ret),
 
             "halt" => Ok(Opcode::Halt),

@@ -168,6 +168,22 @@ impl Emittable {
                 Ok(vec![result])
             }
 
+            Instruction { opcode: Opcode::Not, operands} => {
+                // For some reason the six least significant bits for the NOT opcode are
+                // set according to the ISA 🤔
+                let mut result: u16 = 0b1001_0000_0011_1111;
+
+                match operands.as_slice() {
+                    [Operand::Register { r: dr }, Operand::Register { r: sr }] => {
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (sr.to_owned() as u16) << 6;
+                    },
+                    _ => return self.unsupported_operands_err()
+                }
+
+                Ok(vec![result])
+            }
+
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 
@@ -213,6 +229,8 @@ impl Emittable {
                 }
                 Ok(vec![result])
             }
+
+
 
             Instruction { opcode: Opcode::Br { modifiers }, operands} => {
                 const OPCODE:u16 = 0b0000;
