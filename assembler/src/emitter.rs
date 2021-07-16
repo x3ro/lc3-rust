@@ -184,6 +184,10 @@ impl Emittable {
                 Ok(vec![result])
             }
 
+            Instruction { opcode: Opcode::Rti, .. } => {
+                Ok(vec![0b1000_0000_0000_0000])
+            }
+
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 
