@@ -104,13 +104,11 @@ impl Emittable {
                 ).emit(state)
             }
 
-            Instruction { opcode: Opcode::Jsr, operands } => {
+            Instruction { opcode: Opcode::Jsr | Opcode::Jsrr, operands} => {
                 const OPCODE:u16 = 0b0100;
                 let mut result: u16 = 0b0000_0000_0000_0000;
 
                 result |= OPCODE << 12;
-                // This flag indicates that it's a relative jump (i.e. jump target _not_ from a register)
-                result |= 1 << 11;
 
                 match operands.as_slice() {
                     [Operand::Label { name}] => {
@@ -118,9 +116,14 @@ impl Emittable {
                             state.relative_offset(self.offset, name, 11)
                                 .map_err(|x| format!("Did not find label '{}' in JSR call", x))?;
 
+                        // This flag indicates that it's a relative jump (i.e. jump target _not_ from a register)
+                        result |= 1 << 11;
                         result |= offset;
                     },
-                    _ => return Err(format!("Unsupported operands for JSR (expects one label): {:?}", self.instruction))
+                    [Operand::Register { r}] => {
+                        result |= (r.to_owned() as u16) << 6;
+                    },
+                    _ => return Err(format!("Unsupported operands for {:?}: {:?}", self.instruction.opcode, self.instruction.operands))
 
                 }
                 Ok(vec![result])
