@@ -28,6 +28,21 @@ impl Emittable {
         }
     }
 
+    pub fn clamp(&self, value: i64, n_bits: u8) -> Result<i64, String> {
+        let upper_limit = (2 as i64).pow(n_bits as u32 - 1) - 1;
+        let lower_limit = -1 * upper_limit - 1;
+        if value < lower_limit || value > upper_limit {
+            Err(format!("Value '{}' was not within valid bounds: [{}, {}]", value, lower_limit, upper_limit))
+        } else {
+            let mask = (1 << n_bits) - 1;
+            Ok(value & mask)
+        }
+    }
+
+    pub fn unsupported_operands_err<T>(&self) -> Result<T, String> {
+        return Err(format!("Unsupported operands for {:?}: {:?}", self.instruction.opcode, self.instruction.operands))
+    }
+
     pub fn emit(&self, state: &Lc3State) -> Result<Vec<u16>, String> {
         match &self.instruction {
             Instruction { opcode: Opcode::Ld | Opcode::Ldi, operands} => {
@@ -50,11 +65,28 @@ impl Emittable {
                         }
                     },
 
-                    _ => return Err(format!("Unsupported operands for {:?}: {:?}", self.instruction.opcode, self.instruction.operands))
+                    _ => return self.unsupported_operands_err()
                 };
 
                 Ok(vec![result])
             }
+
+            Instruction { opcode: Opcode::Ldr, operands} => {
+                const OPCODE:u16 = 0b0110;
+                let mut result: u16 = OPCODE << 12;
+
+                match operands.as_slice() {
+                    [Operand::Register { r: dr }, Operand::Register { r: base_r }, Operand::Immediate { value: offset6}] => {
+                        result |= (dr.to_owned() as u16) << 9;
+                        result |= (base_r.to_owned() as u16) << 6;
+                        result |= self.clamp(offset6.to_owned(), 6)? as u16;
+                    }
+                    _ => return self.unsupported_operands_err()
+                }
+
+                Ok(vec![result])
+            }
+
 
             Instruction { opcode: Opcode::Add, operands} => {
                 const OPCODE:u16 = 0b0001;
@@ -76,7 +108,7 @@ impl Emittable {
                         result |= 1 << 5;
                         result |= (imm5 & 0b11111) as u16;
                     }
-                    _ => return Err(format!("Unsupported operands for ADD: {:?}", self.instruction))
+                    _ => return self.unsupported_operands_err()
                 };
 
                 Ok(vec![result])
@@ -92,7 +124,7 @@ impl Emittable {
                     [Operand::Register {r: base_r }] => {
                         result |= (base_r.to_owned() as u16 & 0b111) << 6;
                     }
-                    _ => return Err(format!("Unsupported operands for JMP: {:?}", self.instruction))
+                    _ => return self.unsupported_operands_err()
                 }
 
                 Ok(vec![result])
@@ -128,7 +160,7 @@ impl Emittable {
                     [Operand::Register { r}] => {
                         result |= (r.to_owned() as u16) << 6;
                     },
-                    _ => return Err(format!("Unsupported operands for {:?}: {:?}", self.instruction.opcode, self.instruction.operands))
+                    _ => return self.unsupported_operands_err()
 
                 }
                 Ok(vec![result])
@@ -175,7 +207,7 @@ impl Emittable {
                         result |= (imm5 & 0b11111) as u16;
                     }
 
-                    _ => return Err(format!("Unsupported operands for AND: {:?}", self.instruction))
+                    _ => return self.unsupported_operands_err()
                 }
                 Ok(vec![result])
             }
@@ -205,7 +237,7 @@ impl Emittable {
                         }
                     }
 
-                    _ => return Err(format!("Unsupported operands for BR: {:?}", self.instruction))
+                    _ => return self.unsupported_operands_err()
                 }
                 Ok(vec![result])
             }
@@ -245,8 +277,6 @@ impl Emittable {
                 result.push(0);
                 Ok(result)
             }
-
-            // _ => Err(format!("Can't emit unknown instruction {:?}", self.instruction))
         }
     }
 
