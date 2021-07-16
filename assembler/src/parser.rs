@@ -218,10 +218,10 @@ fn operands<I>() -> impl Parser<Input = I, Output = Vec<Operand>>
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    (sep_by(
+    sep_by(
         operand(),
         char(',')
-    ))
+    )
 }
 
 #[test]

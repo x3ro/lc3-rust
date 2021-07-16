@@ -33,11 +33,29 @@ impl Operand {
 #[derive(Debug,PartialEq)]
 pub enum Opcode {
     Add,
-    Ld,
     And,
     Br { modifiers: Option<String> },
+    Jmp,
+    // Jsr
+    // Jsrr,
+    Ld,
+    // Ldi,
+    // Ldr,
+    // Lea,
+    // Not,
+    Ret,
+    // Rti,
+    // St,
+    // Sti,
+    // Str,
+    // Trap,
 
     // Traps with explicit names
+    // Getc,
+    // Out,
+    // Puts,
+    // In,
+    // Putsp,
     Halt,
 
     // Pseudo-opcodes
@@ -49,9 +67,11 @@ impl Opcode {
     pub fn from(value: &String, modifiers: &Option<String>) -> Result<Self, String> {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
-            "ld" => Ok(Opcode::Ld),
             "and" => Ok(Opcode::And),
             "br" => Ok(Opcode::Br { modifiers: modifiers.clone() }),
+            "jmp" => Ok(Opcode::Jmp),
+            "ld" => Ok(Opcode::Ld),
+            "ret" => Ok(Opcode::Ret),
 
             "halt" => Ok(Opcode::Halt),
 

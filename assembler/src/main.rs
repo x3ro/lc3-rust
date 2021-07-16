@@ -38,7 +38,7 @@ impl Lc3State {
                 let from_offset_i32 = from_offset as i32;
 
                 // -1 Because offset is counted from the next instruction
-                let res = ((label_offset - from_offset_i32) - 1);
+                let res = (label_offset - from_offset_i32) - 1;
 
                 if res < -256 || res > 255 {
                     Err(format!("Label '{}' too far away from usage ({}), must be within [-256, 255]", to_label, res))

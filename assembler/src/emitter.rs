@@ -65,6 +65,33 @@ impl Emittable {
                 Ok(vec![result])
             }
 
+            Instruction { opcode: Opcode::Jmp, operands} => {
+                const OPCODE:u16 = 0b1100;
+
+                let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= OPCODE << 12;
+
+                match operands.as_slice() {
+                    [Operand::Register {r: base_r }] => {
+                        result |= (base_r.to_owned() as u16 & 0b111) << 6;
+                    }
+                    _ => return Err(format!("Unsupported operands for JMP: {:?}", self.instruction))
+                }
+
+                Ok(vec![result])
+            }
+
+            // RET is just an alias for `JMP R7`
+            Instruction { opcode: Opcode::Ret, operands} => {
+                Emittable::from(
+                 Instruction {
+                        opcode: Opcode::Jmp,
+                        operands: vec![Operand::Register { r: Registers::R7 }],
+                    },
+                    self.offset
+                ).emit(state)
+            }
+
             Instruction { opcode: Opcode::Halt, operands} => {
                 const OPCODE:u16 = 0b1111;
 
