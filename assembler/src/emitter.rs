@@ -224,18 +224,41 @@ impl Emittable {
                 Ok(vec![result])
             }
 
-            Instruction { opcode: Opcode::Halt, operands} => {
-                const OPCODE:u16 = 0b1111;
+            Instruction { opcode: Opcode::Trap, operands} => {
+                let mut result: u16 = 0b1111_0000_0000_0000;
 
-                if operands.len() > 0 {
-                    return Err("HALT was used with operands, but does not take any".into())
+                match operands.as_slice() {
+                    [Operand::Immediate { value }] => {
+                        result |= self.clamp(value.to_owned(), 8)? as u16;
+                    }
+                    _ => return self.unsupported_operands_err()
                 }
 
-                let mut result: u16 = 0b0000_0000_0000_0000;
-                result |= OPCODE << 12;
-                result |= 0x25;
-
                 Ok(vec![result])
+            }
+
+            Instruction { opcode: Opcode::Getc | Opcode::Out | Opcode::Puts | Opcode::In | Opcode::Putsp | Opcode::Halt, operands} => {
+                if operands.len() > 0 {
+                    return Err(format!("TRAP alias '{:?}' does not take any parameters", self.instruction.opcode))
+                }
+
+                let trap_vector = match self.instruction.opcode {
+                    Opcode::Getc => Ok(0x20),
+                    Opcode::Out => Ok(0x21),
+                    Opcode::Puts => Ok(0x22),
+                    Opcode::In => Ok(0x23),
+                    Opcode::Putsp => Ok(0x24),
+                    Opcode::Halt => Ok(0x25),
+                    _ => Err(format!("Unknown TRAP alias '{:?}'", self.instruction.opcode))
+                }?;
+
+                Emittable::from(
+                    Instruction {
+                        opcode: Opcode::Trap,
+                        operands: vec![Operand::immediate(trap_vector)],
+                    },
+                    self.offset
+                ).emit(state)
             }
 
             Instruction { opcode: Opcode::And, operands} => {

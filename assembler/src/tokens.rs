@@ -48,14 +48,14 @@ pub enum Opcode {
     St,
     Sti,
     Str,
-    // Trap,
+    Trap,
 
-    // Traps with explicit names
-    // Getc,
-    // Out,
-    // Puts,
-    // In,
-    // Putsp,
+    // Traps with opcode-like aliases
+    Getc,
+    Out,
+    Puts,
+    In,
+    Putsp,
     Halt,
 
     // Pseudo-opcodes
@@ -83,6 +83,12 @@ impl Opcode {
             "sti" => Ok(Opcode::Sti),
             "str" => Ok(Opcode::Str),
 
+            "trap" => Ok(Opcode::Trap),
+            "getc" => Ok(Opcode::Getc),
+            "out" => Ok(Opcode::Out),
+            "puts" => Ok(Opcode::Puts),
+            "in" => Ok(Opcode::In),
+            "putsp" => Ok(Opcode::Putsp),
             "halt" => Ok(Opcode::Halt),
 
             ".fill" => Ok(Opcode::Fill),
