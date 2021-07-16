@@ -49,10 +49,11 @@ fn dot_command<I>(cmd: &'static str) -> impl Parser<Input = I, Output = &'static
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
+        skip_many(space()),
         char('.'),
         string_cmp(cmd, |l, r| l.eq_ignore_ascii_case(&r))
     )
-        .map(|(_, parsed_cmd)| {
+        .map(|(_, _, parsed_cmd)| {
             parsed_cmd
         })
 }
@@ -65,11 +66,12 @@ fn dot_origin<I>() -> impl Parser<Input = I, Output = u16>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
+        skip_many(space()),
         dot_command("ORIG"),
         skip_many1(space()),
         immediate()
     )
-        .and_then(|(_,_,value)| {
+        .and_then(|(_,_,_,value)| {
             let max = std::u16::MAX as i64;
             match value {
                 Operand::Immediate { value } if (0 ..= max).contains(&value) => Ok(value as u16),
@@ -370,7 +372,7 @@ fn label<I>() -> impl Parser<Input = I, Output = String>
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
-    many1(choice((upper(), char('_'))))
+    many1(choice((upper(), char('_'), digit())))
         .and_then(|label: String|
             match Opcode::from(&label, &None) {
                 Err(_) => Ok(label),
@@ -410,7 +412,20 @@ fn parse_label() {
     assert_eq!(label().easy_parse("ADD").is_err(), true);
 }
 
-
+fn comment<I>() -> impl Parser<Input = I, Output = String>
+    where
+        I: Stream<Item = char>,
+        I::Error: ParseError<I::Item, I::Range, I::Position>,
+{
+    (
+        skip_many(space_no_line_ending()),
+        char(';'),
+        many(all_but_line_endings()),
+    )
+        .map(|opt| match opt {
+            (_,_,asd) => asd,
+        })
+}
 
 fn maybe_comment<I>() -> impl Parser<Input = I, Output = Option<String>>
     where
@@ -430,8 +445,8 @@ fn maybe_comment<I>() -> impl Parser<Input = I, Output = Option<String>>
 
 #[test]
 fn parse_maybe_comment() {
-    let (result, remainder) = maybe_comment().easy_parse(" ; as;das;das\nnew line").unwrap();
-    assert_eq!(result, Some(String::from(" as;das;das")));
+    let (result, remainder) = maybe_comment().easy_parse(";#comment\nnew line").unwrap();
+    assert_eq!(result, Some(String::from("#comment")));
     assert_eq!(remainder, "\nnew line");
 }
 
@@ -507,13 +522,12 @@ pub fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
-        skip_many(space()),
+        skip_many((comment(), space())),
         line(dot_origin()),
         many::<Vec<Line>,_>(line(attempt(assembler_line()))), // Attempt is needed here, because .END could be either a pseudo-operation without label or the dot command :/
-        skip_many(space_no_line_ending()),
         dot_command("END"),
     )
-        .map(|(_,origin,lines,_,_)| Lc3File { origin, lines })
+        .map(|(_,origin,lines,_)| Lc3File { origin, lines })
 }
 
 #[test]
