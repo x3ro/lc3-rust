@@ -188,8 +188,15 @@ impl Emittable {
                 Ok(vec![0b1000_0000_0000_0000])
             }
 
-            Instruction { opcode: Opcode::St, operands} => {
-                let mut result: u16 = 0b0011_0000_0000_0000;
+            Instruction { opcode: Opcode::St | Opcode::Sti, operands} => {
+                let opcode = if self.instruction.opcode == Opcode::St {
+                    0b0011
+                } else {
+                    0b1011
+                };
+
+                let mut result: u16 = 0b0000_0000_0000_0000;
+                result |= opcode << 12;
 
                 match operands.as_slice() {
                     [Operand::Register { r: sr }, Operand::Label { name}] => {
