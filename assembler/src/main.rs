@@ -30,7 +30,7 @@ pub struct Lc3State {
 }
 
 impl Lc3State {
-    pub fn relative_offset(&self, from_offset: u16, to_label: &String) -> Result<i16, String> {
+    pub fn relative_offset(&self, from_offset: u16, to_label: &String, n_bits: u32) -> Result<u16, String> {
         match self.labels.get(to_label) {
             None => Err(format!("Label '{}' referenced but never defined", to_label)),
             Some(v) => {
@@ -40,10 +40,14 @@ impl Lc3State {
                 // -1 Because offset is counted from the next instruction
                 let res = (label_offset - from_offset_i32) - 1;
 
-                if res < -256 || res > 255 {
-                    Err(format!("Label '{}' too far away from usage ({}), must be within [-256, 255]", to_label, res))
+                // What are the numerical limits of a two's-complement with the specified number of bits?
+                let upper_limit = (2 as i32).pow(n_bits - 1) - 1;
+                let lower_limit = -1 * upper_limit - 1;
+                if res < lower_limit || res > upper_limit {
+                    Err(format!("Label '{}' too far away from usage ({}), must be within [{}, {}]", lower_limit, upper_limit, to_label, res))
                 } else {
-                    Ok(res as i16)
+                    let mask = (1 << n_bits) - 1;
+                    Ok(res as u16 & mask)
                 }
             }
         }

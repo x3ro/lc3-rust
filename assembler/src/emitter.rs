@@ -38,9 +38,9 @@ impl Emittable {
                     [Operand::Register {r: dr}, Operand::Label {name}] => {
                         result |= (dr.to_owned() as u16) << 9;
 
-                        let offset = state.relative_offset(self.offset, name);
+                        let offset = state.relative_offset(self.offset, name, 9);
                         match offset {
-                            Ok(x) => result |= (x as u16) & 0b111111111,
+                            Ok(x) => result |= x as u16,
                             Err(x) => return Err(x)
                         }
                     },
@@ -102,6 +102,28 @@ impl Emittable {
                     },
                     self.offset
                 ).emit(state)
+            }
+
+            Instruction { opcode: Opcode::Jsr, operands } => {
+                const OPCODE:u16 = 0b0100;
+                let mut result: u16 = 0b0000_0000_0000_0000;
+
+                result |= OPCODE << 12;
+                // This flag indicates that it's a relative jump (i.e. jump target _not_ from a register)
+                result |= 1 << 11;
+
+                match operands.as_slice() {
+                    [Operand::Label { name}] => {
+                        let offset =
+                            state.relative_offset(self.offset, name, 11)
+                                .map_err(|x| format!("Did not find label '{}' in JSR call", x))?;
+
+                        result |= offset;
+                    },
+                    _ => return Err(format!("Unsupported operands for JSR (expects one label): {:?}", self.instruction))
+
+                }
+                Ok(vec![result])
             }
 
             Instruction { opcode: Opcode::Halt, operands} => {
@@ -168,9 +190,9 @@ impl Emittable {
                             result |= (mods.contains("p") as u16) << 9;
                         }
 
-                        let offset = state.relative_offset(self.offset, name);
+                        let offset = state.relative_offset(self.offset, name, 9);
                         match offset {
-                            Ok(x) => result |= (x as u16) & 0b111111111,
+                            Ok(x) => result |= x as u16,
                             Err(x) => return Err(x)
                         }
                     }

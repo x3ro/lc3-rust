@@ -36,7 +36,7 @@ pub enum Opcode {
     And,
     Br { modifiers: Option<String> },
     Jmp,
-    // Jsr
+    Jsr,
     // Jsrr,
     Ld,
     // Ldi,
@@ -70,6 +70,7 @@ impl Opcode {
             "and" => Ok(Opcode::And),
             "br" => Ok(Opcode::Br { modifiers: modifiers.clone() }),
             "jmp" => Ok(Opcode::Jmp),
+            "jsr" => Ok(Opcode::Jsr),
             "ld" => Ok(Opcode::Ld),
             "ret" => Ok(Opcode::Ret),
 
