@@ -360,6 +360,22 @@ impl Emittable {
                 result.push(0);
                 Ok(result)
             }
+
+            Instruction { opcode: Opcode::Blkw, operands} => {
+                let mut result:Vec<u16> = vec![];
+
+                match operands.as_slice() {
+                    [Operand::Label { name }] => {
+                        let x = name.to_owned().parse::<u16>().unwrap();
+                        for _ in 1..x {
+                            result.push(0)
+                        }
+                    }
+                    _ => return self.unsupported_operands_err()
+                }
+
+                Ok(result)
+            }
         }
     }
 

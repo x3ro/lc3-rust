@@ -61,6 +61,7 @@ pub enum Opcode {
     // Pseudo-opcodes
     Fill,
     Stringz,
+    Blkw,
 }
 
 impl Opcode {
@@ -93,6 +94,7 @@ impl Opcode {
 
             ".fill" => Ok(Opcode::Fill),
             ".stringz" => Ok(Opcode::Stringz),
+            ".blkw" => Ok(Opcode::Blkw),
 
             _ => Err(format!("Unknown opcode '{}'", value))
         }

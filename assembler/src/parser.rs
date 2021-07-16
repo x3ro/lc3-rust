@@ -7,7 +7,7 @@ use combine::stream::{StreamErrorFor};
 use num_traits::FromPrimitive;
 
 use tokens::*;
-//use combine::parser::char::lower;
+use combine::stream::state::State;
 
 fn space_no_line_ending<I>() -> impl Parser<Input = I, Output = char>
     where
