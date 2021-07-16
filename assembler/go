@@ -35,21 +35,33 @@ function task_assemble_tests {
     done
 }
 
+function cmd_assemble_ours {
+  for asm_file in $SCRIPT_DIR/tests/*.asm; do
+    echo $asm_file
+    target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+  done
+}
+
 function cmd_test {
     #set -x
     cd $SCRIPT_DIR
     cargo build
     git clean -fdx -e '*.asm' -- tests/ 2>&1 1>/dev/null
 
+    files=$SCRIPT_DIR/tests/*.asm
+    if [ ! -z "$1" ]; then
+      files="$1"
+    fi
+
     task_assemble_tests
-    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+    for asm_file in $files; do
       target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
     done
 
     echo ""
     notice "Starting test-run"
 
-    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+    for asm_file in $files; do
       local our_file="${asm_file}.out"
       local their_file="$SCRIPT_DIR/tests/$(basename $asm_file .asm).obj"
 
@@ -82,5 +94,6 @@ fi
 case "${command}" in
     test) cmd_test "$@" ;;
     assemble-tests) task_assemble_tests "$@" ;;
+    assemble-ours) cmd_assemble_ours ;;
     *) cmd_usage
 esac
