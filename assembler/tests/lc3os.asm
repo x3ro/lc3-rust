@@ -1,3 +1,4 @@
+
 ;##############################################################################
 ;#
 ;# lc3os.asm -- the LC-3 operating system
@@ -696,6 +697,6 @@ TRAP_IN_MSG	.STRINGZ "\nInput a character> "
 TRAP_HALT_MSG	.STRINGZ "\n\n--- halting the LC-3 ---\n\n"
 BAD_TRAP_MSG	.STRINGZ "\n\n--- undefined trap executed ---\n\n"
 
-.END
+    .END
 
 

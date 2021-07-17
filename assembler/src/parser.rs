@@ -514,20 +514,20 @@ fn line<I, P, O>(p: P) -> impl Parser<Input = I, Output = O>
         .map(|(_,output,_)| output)
 }
 
-
-
 pub fn lc3_file<I>() -> impl Parser<Input = I, Output = Lc3File>
     where
         I: Stream<Item = char>,
         I::Error: ParseError<I::Item, I::Range, I::Position>,
 {
     (
+        skip_many(space()),
         skip_many((comment(), space())),
         line(dot_origin()),
-        many::<Vec<Line>,_>(line(attempt(assembler_line()))), // Attempt is needed here, because .END could be either a pseudo-operation without label or the dot command :/
+        // Attempt is needed here, because .END could be either a pseudo-operation without label or the dot command :/
+        many::<Vec<Line>,_>(attempt(line(assembler_line()))),
         dot_command("END"),
     )
-        .map(|(_,origin,lines,_)| Lc3File { origin, lines })
+        .map(|(_,_,origin,lines,_)| Lc3File { origin, lines })
 }
 
 #[test]
@@ -546,6 +546,24 @@ SOME_X    .FILL x10, x12, xFFFF   ; wat
 SOME_Y    .FILL xFFF0 ; -16
 HELLO_STR .STRINGZ "If I don't add this the \"assembler\" segfaults"
 .END
+
+"#;
+
+    let r = lc3_file().easy_parse(State::new(input));
+
+    if r.is_err() {
+        println!("{:#?}", r);
+    }
+
+    assert_eq!(false, r.is_err());
+}
+
+#[test]
+fn parse_weird_lc3_file() {
+    let input = r#"
+;#Comment before ORIG
+.ORIG x3000
+    .END
 
 "#;
 
