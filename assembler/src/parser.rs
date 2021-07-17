@@ -9,8 +9,10 @@ use combine::stream::StreamErrorFor;
 
 use num_traits::FromPrimitive;
 
-use combine::stream::state::State;
 use tokens::*;
+
+#[cfg(test)]
+use combine::stream::state::State;
 
 fn space_no_line_ending<I>() -> impl Parser<Input = I, Output = char>
 where
