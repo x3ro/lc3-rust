@@ -1,6 +1,6 @@
 use num_traits::FromPrimitive;
 
-#[derive(Debug,PartialEq,Copy,Clone,num_derive::FromPrimitive)]
+#[derive(Debug, PartialEq, Copy, Clone, num_derive::FromPrimitive)]
 pub enum Registers {
     R0 = 0,
     R1,
@@ -12,7 +12,7 @@ pub enum Registers {
     R7,
 }
 
-#[derive(Debug,PartialEq,Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operand {
     Register { r: Registers },
     Immediate { value: i64 },
@@ -22,7 +22,9 @@ pub enum Operand {
 
 impl Operand {
     pub fn register(index: u16) -> Self {
-        Operand::Register { r: Registers::from_u16(index).unwrap() }
+        Operand::Register {
+            r: Registers::from_u16(index).unwrap(),
+        }
     }
 
     pub fn immediate(value: i64) -> Self {
@@ -30,7 +32,7 @@ impl Operand {
     }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Opcode {
     Add,
     And,
@@ -69,7 +71,9 @@ impl Opcode {
         match value.to_lowercase().as_ref() {
             "add" => Ok(Opcode::Add),
             "and" => Ok(Opcode::And),
-            "br" => Ok(Opcode::Br { modifiers: modifiers.clone() }),
+            "br" => Ok(Opcode::Br {
+                modifiers: modifiers.clone(),
+            }),
             "jmp" => Ok(Opcode::Jmp),
             "jsr" => Ok(Opcode::Jsr),
             "jsrr" => Ok(Opcode::Jsrr),
@@ -96,7 +100,7 @@ impl Opcode {
             ".stringz" => Ok(Opcode::Stringz),
             ".blkw" => Ok(Opcode::Blkw),
 
-            _ => Err(format!("Unknown opcode '{}'", value))
+            _ => Err(format!("Unknown opcode '{}'", value)),
         }
     }
 }
@@ -104,23 +108,26 @@ impl Opcode {
 impl Opcode {
     // Shorthand for instantiating Instructions, e.g. Add.instruction(operands)
     pub fn instruction(self, operands: Vec<Operand>) -> Instruction {
-        Instruction { opcode: self, operands }
+        Instruction {
+            opcode: self,
+            operands,
+        }
     }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Lc3File {
     pub origin: u16,
     pub lines: Vec<Line>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Instruction {
     pub opcode: Opcode,
     pub operands: Vec<Operand>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Line {
     pub label: Option<String>,
     pub instruction: Option<Instruction>,

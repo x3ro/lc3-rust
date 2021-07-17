@@ -1,24 +1,23 @@
 extern crate combine;
-extern crate num_traits;
 extern crate num_derive;
+extern crate num_traits;
 
 #[macro_use]
 mod tokens;
-mod parser;
 mod emitter;
+mod parser;
 mod pretty_parser_error;
 
-use tokens::*;
-use parser::lc3_file;
 use combine::Parser;
-
+use parser::lc3_file;
+use tokens::*;
 
 use combine::stream::state::State;
 
-use std::collections::HashMap;
 use emitter::Emittable;
-use std::error::Error;
 use pretty_parser_error::format_parser_error;
+use std::collections::HashMap;
+use std::error::Error;
 
 type Offset = u16;
 
@@ -30,7 +29,12 @@ pub struct Lc3State {
 }
 
 impl Lc3State {
-    pub fn relative_offset(&self, from_offset: u16, to_label: &String, n_bits: u32) -> Result<u16, String> {
+    pub fn relative_offset(
+        &self,
+        from_offset: u16,
+        to_label: &String,
+        n_bits: u32,
+    ) -> Result<u16, String> {
         match self.labels.get(to_label) {
             None => Err(format!("Label '{}' referenced but never defined", to_label)),
             Some(v) => {
@@ -44,7 +48,10 @@ impl Lc3State {
                 let upper_limit = (2 as i32).pow(n_bits - 1) - 1;
                 let lower_limit = -1 * upper_limit - 1;
                 if res < lower_limit || res > upper_limit {
-                    Err(format!("Label '{}' too far away from usage ({}), must be within [{}, {}]", lower_limit, upper_limit, to_label, res))
+                    Err(format!(
+                        "Label '{}' too far away from usage ({}), must be within [{}, {}]",
+                        lower_limit, upper_limit, to_label, res
+                    ))
                 } else {
                     let mask = (1 << n_bits) - 1;
                     Ok(res as u16 & mask)
@@ -55,7 +62,12 @@ impl Lc3State {
 }
 
 pub fn into_emittable(state: &mut Lc3State, line: Line, floating_labels: &mut Vec<String>) {
-    if let Line { label, instruction: Some(instruction), .. } = line {
+    if let Line {
+        label,
+        instruction: Some(instruction),
+        ..
+    } = line
+    {
         let e = Emittable::from(instruction, state.offset);
 
         if let Some(name) = label {
@@ -71,20 +83,23 @@ pub fn into_emittable(state: &mut Lc3State, line: Line, floating_labels: &mut Ve
 
         state.offset += e.size();
         state.emittables.push(e);
-    } else if let Line { label: Some(label), .. } = line {
+    } else if let Line {
+        label: Some(label), ..
+    } = line
+    {
         // A label without instruction, save this for later
         floating_labels.push(label);
     }
 }
 
 pub fn assemble(ast: Lc3File) -> Vec<u16> {
-    let mut buffer:Vec<u16> = vec![];
+    let mut buffer: Vec<u16> = vec![];
     let mut errors: Vec<(&Emittable, String)> = vec![];
 
     let mut state = Lc3State {
         offset: ast.origin,
         emittables: vec![],
-        labels: HashMap::new()
+        labels: HashMap::new(),
     };
 
     // In this first pass, we record all labels and the offset of each instruction (i.e.
@@ -101,7 +116,7 @@ pub fn assemble(ast: Lc3File) -> Vec<u16> {
 
     // The second pass emits the actual byte code
     for emittable in &state.emittables {
-        let res= emittable.emit(&state);
+        let res = emittable.emit(&state);
         if res.is_ok() {
             buffer.extend(res.unwrap());
         } else {
@@ -125,9 +140,9 @@ pub fn fulleverything(contents: &Box<String>) -> Result<Vec<u8>, Box<dyn Error>>
         .map_err(|err| format_parser_error(contents.as_str(), err))?;
 
     let ast = r.0;
-    let actual : Vec<u8> = assemble(ast)
+    let actual: Vec<u8> = assemble(ast)
         .iter()
-        .flat_map(|x| vec![(x >> 8) as u8, (x & 0xff) as u8] )
+        .flat_map(|x| vec![(x >> 8) as u8, (x & 0xff) as u8])
         .collect();
 
     Ok(actual)
@@ -141,7 +156,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
         println!("Usage: lc3as <input file> <output file>");
-        return Ok(())
+        return Ok(());
     }
     let asm_input = args.get(1).unwrap();
     let obj_output = args.get(2).unwrap();
@@ -158,29 +173,28 @@ pub fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-
 #[test]
 pub fn test_basic_bytecode_emitting() {
-//    let input = r#"
-//.ORIG x3000
-//    LD R1, SOME_X
-//    LD R2, SOME_Y
-//    ;ADD R0, R0, R1 ; = 0 + 16 = 16
-//    LD R2, SOME_Y
-//    ;HALT
-//    LD R2, SOME_Y1
-//    ;ADD R0, R0, R2 ; = 16 - 16 = 0
-//    LD R2, SOME_Y
-//    ;HALT
-//    LD R2, SOME_Y
-//    ;ADD R0, R0, R2 ;  = 0 - 16 = -16
-//    LD R2, SOME_Y
-//    ;HALT
-//    LD R2, SOME_Y
-//    SOME_X    .FILL x10   ;  16
-//    SOME_Y    .FILL xFFF0 ; -16
-//.END
-//"#;
+    //    let input = r#"
+    //.ORIG x3000
+    //    LD R1, SOME_X
+    //    LD R2, SOME_Y
+    //    ;ADD R0, R0, R1 ; = 0 + 16 = 16
+    //    LD R2, SOME_Y
+    //    ;HALT
+    //    LD R2, SOME_Y1
+    //    ;ADD R0, R0, R2 ; = 16 - 16 = 0
+    //    LD R2, SOME_Y
+    //    ;HALT
+    //    LD R2, SOME_Y
+    //    ;ADD R0, R0, R2 ;  = 0 - 16 = -16
+    //    LD R2, SOME_Y
+    //    ;HALT
+    //    LD R2, SOME_Y
+    //    SOME_X    .FILL x10   ;  16
+    //    SOME_Y    .FILL xFFF0 ; -16
+    //.END
+    //"#;
 
     let other = r#"
 .ORIG x3000
