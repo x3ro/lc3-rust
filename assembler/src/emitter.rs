@@ -30,7 +30,7 @@ impl Emittable {
                     ),
                 }
             }
-            // TODO: not all emittables are one word long (e.g. stringz or fill)
+            // TODO: not all emittables are one word long (e.g. .BLKW)
             _ => 1,
         }
     }
