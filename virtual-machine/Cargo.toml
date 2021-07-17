@@ -1,0 +1,10 @@
+[package]
+name = "hello_world"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+
+[dependencies]
+num-traits = "0.2"
+num-derive = "0.2"
+clap = "2.32.0"
+termios = "0.3.1"

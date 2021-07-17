@@ -5,3 +5,4 @@ target/
 *.obj
 *.lst
 *.vconst
+.idea
