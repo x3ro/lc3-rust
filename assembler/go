@@ -1,0 +1,99 @@
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+LC3AS_DIR="${SCRIPT_DIR}/vendor/lc3/lc3tools"
+LC3AS="${LC3AS_DIR}/lc3as"
+
+function error {
+    echo -e >&2 "\033[31m${1}\033[0m";
+    exit 1;
+}
+
+function notice {
+    echo -e >&2 "\033[33m${1}\033[0m";
+}
+
+function ensure_env {
+    git submodule update --init
+    command -v make >/dev/null 2>&1 || error "Please install make (needed to build lc3tools)"
+    command -v rustc >/dev/null 2>&1 || error "Please install Rust >= 1.33"
+    command -v cargo >/dev/null 2>&1 || error "Please install Cargo (Rust's package manager)"
+    command -v binwalk >/dev/null 2>&1 || error "Please install binwalk"
+}
+
+function ensure_lc3_tools {
+    if [ ! -f "${LC3AS}" ]; then
+        notice "LC3 assembler not found, trying to build"
+        (cd "${LC3AS_DIR}" && ./configure && make)
+    fi
+}
+
+function task_assemble_tests {
+    for asm_file in $SCRIPT_DIR/tests/*.asm; do
+        ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
+    done
+}
+
+function cmd_assemble_ours {
+  for asm_file in $SCRIPT_DIR/tests/*.asm; do
+    echo $asm_file
+    target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+  done
+}
+
+function cmd_test {
+    #set -x
+    cd $SCRIPT_DIR
+    cargo build
+    git clean -fdx -e '*.asm' -- tests/ 2>&1 1>/dev/null
+
+    files=$SCRIPT_DIR/tests/*.asm
+    if [ ! -z "$1" ]; then
+      files="$1"
+    fi
+
+    task_assemble_tests
+    for asm_file in $files; do
+      target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+    done
+
+    echo ""
+    notice "Starting test-run"
+
+    for asm_file in $files; do
+      local our_file="${asm_file}.out"
+      local their_file="$SCRIPT_DIR/tests/$(basename $asm_file .asm).obj"
+
+      local ours="$(md5 -q $our_file)"
+      local theirs="$(md5 -q $their_file)"
+
+      if [ "$ours" != "$theirs" ]; then
+        echo "Results differed for $asm_file"
+        echo "Our file: $our_file"
+        binwalk --hexdump "$our_file" "$their_file"
+      else
+        echo "✓ ${asm_file}"
+      fi
+    done
+}
+
+function cmd_usage {
+    echo "TODO usage";
+}
+
+ensure_env
+ensure_lc3_tools
+
+command=""
+if (( $# > 0 )); then
+    command="${1}"
+    shift
+fi
+
+case "${command}" in
+    test) cmd_test "$@" ;;
+    assemble-tests) task_assemble_tests "$@" ;;
+    assemble-ours) cmd_assemble_ours ;;
+    *) cmd_usage
+esac

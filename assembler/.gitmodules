@@ -1,0 +1,6 @@
+[submodule "vendor/lc3"]
+	path = vendor/lc3
+	url = git@gitlab.com:fresskoma/lc3-tools.git
+[submodule "vendor"]
+	path = vendor/lc3
+	url = git@gitlab.com:fresskoma/lc3-tools.git
