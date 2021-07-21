@@ -79,13 +79,14 @@ name = "hello_world"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "lc3_assembler",
  "num-derive",
  "num-traits",
  "termios",
 ]
 
 [[package]]
-name = "lc3-assembler"
+name = "lc3_assembler"
 version = "0.1.0"
 dependencies = [
  "combine",

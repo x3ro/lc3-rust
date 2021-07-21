@@ -1,5 +1,5 @@
 [package]
-name = "lc3-assembler"
+name = "lc3_assembler"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
 
@@ -15,3 +15,7 @@ num-derive = "0.2"
 [dependencies.combine]
 version = "^3.8.1"
 #features = ["verbose-errors"]
+
+[lib]
+name = "lc3_assembler"
+path = "src/lib.rs"
