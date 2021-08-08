@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-LC3AS_DIR="${SCRIPT_DIR}/vendor/lc3/lc3tools"
+LC3AS_DIR="${SCRIPT_DIR}/../vendor/lc3/lc3tools"
 LC3AS="${LC3AS_DIR}/lc3as"
 
 function error {
@@ -55,7 +55,7 @@ function cmd_test {
 
     task_assemble_tests
     for asm_file in $files; do
-      target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+      $SCRIPT_DIR/../target/debug/lc3-assembler $asm_file $SCRIPT_DIR/tests/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
     done
 
     echo ""
