@@ -1,22 +1,43 @@
 WHITESPACE = _{ " " }
 
-opcode = @{ ASCII_ALPHA ~ ASCII_ALPHA+ }
+//opcode = @{ ASCII_ALPHA ~ ASCII_ALPHA+ }
+
+opcode = @{ "ADD" | "BR" | "JMP" | "JSR" | "JSRR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP" }
+
 comment = { ";" ~ (!NEWLINE ~ ANY)* }
+comment_line = _{ comment ~ NEWLINE }
 label = @{ (ASCII_ALPHANUMERIC | "_")+ }
 
 register_operand = @{ "R" ~ ASCII_DIGIT }
-immediate_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ }
-operand = @{ register_operand | immediate_operand | label }
+hex_operand = @{ "x" ~ ASCII_DIGIT{1,4} }
+decimal_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ }
+immediate_operand = _{ hex_operand | decimal_operand }
+operand = _{ register_operand | immediate_operand | label }
 
-instruction = { opcode ~ operand ~ ("," ~ operand)+ }
+instruction = { opcode ~ operand ~ ("," ~ operand)* }
 
 line_with_label = _{ label ~ instruction? }
 line_without_label = _{ instruction }
 line = { (line_without_label | line_with_label) ~ comment? ~ NEWLINE}
 
-//section_start = { }
+section_start = { ".ORIG" ~ immediate_operand ~ NEWLINE }
+section_end = { ".END" ~ NEWLINE? }
+section = { section_start ~ line* ~ section_end }
+
+// This version of `file` can have arbitrary stuff in front and after
+// a section, but I'm not sure if I like that
+// any_but_section = { (!".ORIG" ~ ANY)* }
+// file = { SOI ~ (any_but_section ~ section)* ~ EOI }
 
 
-file = { SOI ~ line+ ~ EOI }
+file = {
+    SOI ~
+    NEWLINE* ~
+    (comment_line* ~ section)* ~
+    (comment | comment_line*) ~
+    NEWLINE* ~
+    EOI
+}
+
 //instruction = { opcode ~ register_operand }
 //line = { label? ~  }

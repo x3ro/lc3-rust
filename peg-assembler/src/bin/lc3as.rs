@@ -21,6 +21,7 @@ mod tests {
     use super::*;
     use pest::iterators::Pair;
 
+    // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70
     fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {
         let indent = if is_newline {
             "  ".repeat(indent_level)
@@ -101,8 +102,8 @@ mod tests {
             let res = Lc3Parser::parse($rule, $in);
             assert!(res.is_ok());
             assert_eq!(
+                format_pair(res.unwrap().next().unwrap(), 0, false),
                 $ex.trim(),
-                format_pair(res.unwrap().next().unwrap(), 0, false)
             );
         };
     }
@@ -128,22 +129,65 @@ mod tests {
 
         assert_rule_match_ast!(
             Rule::line,
-            "SOME_LABEL LDI R0, #1 ;;;; nice label\n",
+            "SOME_LABEL LDI R0, #1, x123 ;;;; nice label\n",
             r###"
 line
   - label: "SOME_LABEL"
   - instruction
     - opcode: "LDI"
-    - operand: "R0"
-    - operand: "#1"
+    - register_operand: "R0"
+    - decimal_operand: "#1"
+    - hex_operand: "x123"
   - comment: ";;;; nice label"
 "###
         );
     }
 
-    // #[test]
-    // fn test_lex_register() {
-    //     assert_rule!(Rule::register, "R1");
-    //     assert_not_rule!(Rule::register, "RR");
-    // }
+    #[test]
+    fn test_lex_section() {
+        assert_rule!(Rule::section, ".ORIG x1234\n.END");
+        assert_rule!(Rule::section, ".ORIG x1234\nADD R0, R0, #1\n.END");
+    }
+
+    #[test]
+    fn test_lex_file() {
+        // A section can be preceded by comments, or comments can come after
+        assert_rule!(Rule::file, "    ; some stuff\n;foo\n.ORIG x1234\nADD R0, R0, #1\n.END");
+        assert_rule!(Rule::file, ".ORIG x1234\nADD R0, R0, #1\n.END\n;wat?!");
+
+        let input = r###"
+; asd
+.ORIG x1234
+FOO
+.END
+.ORIG #3000
+    ADD R0, R0, x1
+    TRAP GETC
+.END
+; foo111
+"###;
+
+        let expected = r###"
+ file
+  - comment: "; asd"
+  - section
+    - section_start > hex_operand: "x1234"
+    - line > label: "FOO"
+    - section_end: ".END\n"
+  - section
+    - section_start > decimal_operand: "#3000"
+    - line > instruction
+      - opcode: "ADD"
+      - register_operand: "R0"
+      - register_operand: "R0"
+      - hex_operand: "x1"
+    - line > instruction
+      - opcode: "TRAP"
+      - label: "GETC"
+    - section_end: ".END\n"
+  - comment: "; foo111"
+  - EOI: ""
+"###;
+        assert_rule_match_ast!(Rule::file, input, expected);
+    }
 }
