@@ -1,0 +1,22 @@
+WHITESPACE = _{ " " }
+
+opcode = @{ ASCII_ALPHA ~ ASCII_ALPHA+ }
+comment = { ";" ~ (!NEWLINE ~ ANY)* }
+label = @{ (ASCII_ALPHANUMERIC | "_")+ }
+
+register_operand = @{ "R" ~ ASCII_DIGIT }
+immediate_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ }
+operand = @{ register_operand | immediate_operand | label }
+
+instruction = { opcode ~ operand ~ ("," ~ operand)+ }
+
+line_with_label = _{ label ~ instruction? }
+line_without_label = _{ instruction }
+line = { (line_without_label | line_with_label) ~ comment? ~ NEWLINE}
+
+//section_start = { }
+
+
+file = { SOI ~ line+ ~ EOI }
+//instruction = { opcode ~ register_operand }
+//line = { label? ~  }

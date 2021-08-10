@@ -1,0 +1,12 @@
+[package]
+name = "lc3_peg_assembler"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+
+[dependencies]
+pest = "2.0"
+pest_derive = "2.0"
+
+[lib]
+name = "lc3_assembler"
+path = "src/lib.rs"

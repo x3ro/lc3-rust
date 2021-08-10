@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "virtual-machine",
-    "assembler"
+    "assembler",
+    "peg-assembler",
 ]
