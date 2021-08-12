@@ -1,28 +1,40 @@
-WHITESPACE = _{ " " }
+WHITESPACE = _{ " " | "\t" }
 
-//opcode = @{ ASCII_ALPHA ~ ASCII_ALPHA+ }
-
-opcode = @{ "ADD" | "BR" | "JMP" | "JSR" | "JSRR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP" }
+modifiers = @{"n" | "z" | "p"}
+opcode = @{ ("ADD" | "AND" | ("BR" ~ modifiers* ) | "JMP" | "JSR" | "JSRR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP") ~ &(WHITESPACE | NEWLINE) }
+pseudo_opcode = @{ ".FILL" | ".STRINGZ" | ".BLKW" }
 
 comment = { ";" ~ (!NEWLINE ~ ANY)* }
 comment_line = _{ comment ~ NEWLINE }
 label = @{ (ASCII_ALPHANUMERIC | "_")+ }
 
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
 register_operand = @{ "R" ~ ASCII_DIGIT }
-hex_operand = @{ "x" ~ ASCII_DIGIT{1,4} }
+hex_operand = @{ "x" ~ ASCII_HEX_DIGIT{1,4} }
 decimal_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ }
-immediate_operand = _{ hex_operand | decimal_operand }
+immediate_operand = _{ hex_operand | decimal_operand | string }
 operand = _{ register_operand | immediate_operand | label }
 
-instruction = { opcode ~ operand ~ ("," ~ operand)* }
+instruction = { (opcode | pseudo_opcode) ~ operand? ~ ("," ~ operand)* }
 
 line_with_label = _{ label ~ instruction? }
 line_without_label = _{ instruction }
 line = { (line_without_label | line_with_label) ~ comment? ~ NEWLINE}
 
+ignored_line = _{ (comment ~ NEWLINE? | NEWLINE) }
+
 section_start = { ".ORIG" ~ immediate_operand ~ NEWLINE }
-section_end = { ".END" ~ NEWLINE? }
-section = { section_start ~ line* ~ section_end }
+section_end = { ".END" }
+section = { section_start ~ (line | ignored_line)* ~ section_end }
+
+
 
 // This version of `file` can have arbitrary stuff in front and after
 // a section, but I'm not sure if I like that
@@ -32,12 +44,6 @@ section = { section_start ~ line* ~ section_end }
 
 file = {
     SOI ~
-    NEWLINE* ~
-    (comment_line* ~ section)* ~
-    (comment | comment_line*) ~
-    NEWLINE* ~
+    (ignored_line* ~ section ~ ignored_line*)* ~
     EOI
 }
-
-//instruction = { opcode ~ register_operand }
-//line = { label? ~  }

@@ -20,6 +20,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 mod tests {
     use super::*;
     use pest::iterators::Pair;
+    use std::fs;
 
     // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70
     fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {
@@ -173,7 +174,7 @@ FOO
   - section
     - section_start > hex_operand: "x1234"
     - line > label: "FOO"
-    - section_end: ".END\n"
+    - section_end: ".END"
   - section
     - section_start > decimal_operand: "#3000"
     - line > instruction
@@ -184,10 +185,21 @@ FOO
     - line > instruction
       - opcode: "TRAP"
       - label: "GETC"
-    - section_end: ".END\n"
+    - section_end: ".END"
   - comment: "; foo111"
   - EOI: ""
 "###;
         assert_rule_match_ast!(Rule::file, input, expected);
+    }
+
+    #[test]
+    fn test_lex_lc3_os() {
+        let contents = fs::read_to_string("../virtual-machine/tests/os.asm")
+            .expect("Something went wrong reading the file");
+
+        assert_rule!(Rule::file, contents.as_str());
+
+
+
     }
 }
