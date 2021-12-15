@@ -1,5 +1,4 @@
 use num_traits::FromPrimitive;
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 
 use std::io::{self, Write};
@@ -111,7 +110,7 @@ impl IndexMut<Registers> for VmRegisters {
 }
 
 pub trait VmDisplay {
-    fn print(&mut self, u8);
+    fn print(&mut self, _: u8);
 }
 
 pub struct DefaultVmDisplay {}
@@ -128,7 +127,7 @@ pub trait VmState {
     fn running(&mut self) -> bool;
     fn memory(&self) -> MutexGuard<VmMemory>;
     fn registers(&mut self) -> &mut VmRegisters;
-    fn display(&mut self) -> &mut VmDisplay;
+    fn display(&mut self) -> &mut dyn VmDisplay;
     fn increment_pc(&mut self);
     fn resume(&mut self);
     fn interrupt_channel(&mut self) -> &Receiver<u16>;
@@ -138,7 +137,7 @@ pub trait VmState {
 pub struct MyVmState<'a> {
     pub memory: Arc<Mutex<VmMemory>>,
     pub registers: VmRegisters,
-    pub display: Box<VmDisplay + 'a>,
+    pub display: Box<dyn VmDisplay + 'a>,
     pub running: bool,
     pub error: Option<String>,
     pub interrupt_channel: Receiver<u16>,
@@ -149,7 +148,7 @@ impl<'a> MyVmState<'a> {
         return MyVmState::new_with_display(Box::new(DefaultVmDisplay {}), interrupt_channel);
     }
 
-    pub fn new_with_display(d: Box<VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
+    pub fn new_with_display(d: Box<dyn VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
         let mut x = Self {
             memory: Arc::new(Mutex::new(VmMemory {
                 memory: [0; MEM_SIZE],
@@ -199,7 +198,7 @@ impl<'a> VmState for MyVmState<'a> {
         &mut self.registers
     }
 
-    fn display(&mut self) -> &mut VmDisplay {
+    fn display(&mut self) -> &mut dyn VmDisplay {
         &mut *self.display
     }
 

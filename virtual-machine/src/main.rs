@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
-use std::time;
+
 use std::time::Duration;
 
 type Result<T> = std::result::Result<T, String>;
@@ -29,18 +29,18 @@ mod state;
 
 use opcodes::*;
 use parser::Instruction;
-use peripheral::{AutomatedKeyboard, Peripheral, TerminalDisplay, TerminalKeyboard};
+use peripheral::{Peripheral, TerminalDisplay, TerminalKeyboard};
 use state::MyVmState;
 use state::Registers;
 use state::VmState;
 
 pub struct VmOptions<'a> {
     pub throttle: Option<Duration>,
-    pub peripherals: Vec<&'a Peripheral>,
+    pub peripherals: Vec<&'a dyn Peripheral>,
     pub debug_trap_enabled: bool,
 }
 
-fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
+fn load_object_file(filename: &str, state: &mut dyn VmState) -> io::Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
 
     let mut buffer: Vec<u8> = vec![];
@@ -66,7 +66,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     Ok(())
 }
 
-fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
+fn run(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
     while state.running() {
         state.tick();
         execute_next_instruction(state)?;
@@ -83,7 +83,7 @@ fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
 }
 
 fn run_file(
-    state: &mut VmState,
+    state: &mut dyn VmState,
     filenames: Vec<&str>,
     start_pc: u16,
     opts: &VmOptions,
@@ -164,7 +164,7 @@ mod tests {
     // Utility functions
 
     #[inline]
-    fn assert_cc_positive(state: &mut VmState) {
+    fn assert_cc_positive(state: &mut dyn VmState) {
         assert_eq!(
             state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
             ConditionFlags::Positive as u16
@@ -180,7 +180,7 @@ mod tests {
     }
 
     #[inline]
-    fn assert_cc_zero(state: &mut VmState) {
+    fn assert_cc_zero(state: &mut dyn VmState) {
         assert_eq!(
             state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
             0
@@ -196,7 +196,7 @@ mod tests {
     }
 
     #[inline]
-    fn assert_cc_negative(state: &mut VmState) {
+    fn assert_cc_negative(state: &mut dyn VmState) {
         assert_eq!(
             state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
             0
@@ -211,7 +211,7 @@ mod tests {
         );
     }
 
-    fn assert_supervisor_mode(state: &mut VmState, enabled: bool) {
+    fn assert_supervisor_mode(state: &mut dyn VmState, enabled: bool) {
         if enabled {
             assert_eq!(
                 state.registers()[Registers::PSR] & 0b1000_0000_0000_0000,
@@ -598,7 +598,7 @@ mod tests {
 
     #[test]
     fn test_puts() {
-        let mut display = CapturingDisplay {
+        let display = CapturingDisplay {
             output: RefCell::new("".into()),
         };
 
@@ -622,11 +622,11 @@ mod tests {
     fn test_os() {
         pretty_env_logger::init();
 
-        let mut display = CapturingDisplay {
+        let display = CapturingDisplay {
             output: RefCell::new("".into()),
         };
 
-        let mut keyboard = AutomatedKeyboard::new("merp".into());
+        let keyboard = AutomatedKeyboard::new("merp".into());
 
         {
             let opts = VmOptions {

@@ -1,7 +1,7 @@
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::io::prelude::*;
-use std::io::{self, stdout, Write};
-use std::ops::Add;
+use std::io::{self, Write};
+
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -12,7 +12,7 @@ use self::termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 use VmState;
 
 pub trait Peripheral {
-    fn run(&self, state: &mut VmState);
+    fn run(&self, state: &mut dyn VmState);
 }
 
 // Keyboard status and keyboard data register
@@ -31,7 +31,7 @@ const OS_DDR: u16 = 0xFE06;
 
 pub struct TerminalDisplay {}
 impl Peripheral for TerminalDisplay {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, state: &mut dyn VmState) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
@@ -54,7 +54,7 @@ pub struct CapturingDisplay {
 }
 
 impl Peripheral for CapturingDisplay {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, state: &mut dyn VmState) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
@@ -104,7 +104,7 @@ impl TerminalKeyboard {
 
             loop {
                 handle.read_exact(&mut buffer).unwrap();
-                tx.send(buffer[0] as char);
+                tx.send(buffer[0] as char).unwrap();
             }
         });
 
@@ -113,7 +113,7 @@ impl TerminalKeyboard {
 }
 
 impl Peripheral for TerminalKeyboard {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, state: &mut dyn VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
             warn!("Resetting KBSR because KBDR was accessed last tick");
@@ -137,11 +137,13 @@ impl Peripheral for TerminalKeyboard {
     }
 }
 
+#[cfg(test)]
 pub struct AutomatedKeyboard {
     output: RefCell<String>,
     counter: RefCell<u8>,
 }
 
+#[cfg(test)]
 impl AutomatedKeyboard {
     pub fn new(output: String) -> Self {
         AutomatedKeyboard {
@@ -151,8 +153,9 @@ impl AutomatedKeyboard {
     }
 }
 
+#[cfg(test)]
 impl Peripheral for AutomatedKeyboard {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, state: &mut dyn VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
             warn!("Resetting KBSR because KBDR was accessed last tick");
