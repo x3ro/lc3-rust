@@ -4,17 +4,8 @@ version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
 
 [dependencies]
-#num-traits = "0.2"
-#num-derive = "0.2"
-#clap = "2.32.0"
-#termios = "0.3.1"
-#nom = "^4.2"
-num-traits = "0.2"
-num-derive = "0.2"
-
-[dependencies.combine]
-version = "^3.8.1"
-#features = ["verbose-errors"]
+pest = "2.0"
+pest_derive = "2.0"
 
 [lib]
 name = "lc3_assembler"
