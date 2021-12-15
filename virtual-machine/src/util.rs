@@ -10,12 +10,6 @@ pub fn binary_add(left: u16, right: u16) -> u16 {
     ((left as i16) + (right as i16)) as u16
 }
 
-macro_rules! debug {
-    ($($arg:tt)*) => ({
-        eprintln!("\x1b[0;33m -- {}\x1b[0m", format_args!($($arg)*));
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
