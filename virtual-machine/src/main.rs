@@ -17,22 +17,22 @@ extern crate log;
 extern crate num_derive;
 extern crate num_traits;
 extern crate termios;
-use termios::{Termios, TCSANOW, ECHO, ICANON, tcsetattr};
+use termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 
 extern crate clap;
-use clap::{Arg, App};
+use clap::{App, Arg};
 
 #[macro_use]
 mod util;
-mod state;
 mod opcodes;
 mod parser;
+mod state;
 
-use state::VmState;
+use opcodes::*;
+use parser::Instruction;
 use state::MyVmState;
 use state::Registers;
-use parser::Instruction;
-use opcodes::*;
+use state::VmState;
 
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
@@ -45,9 +45,9 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     let odd = buffer.iter().skip(1).step_by(2);
     let zipped = even.zip(odd);
 
-    let data: Vec<u16> = zipped.map(|(&high, &low)| {
-        (high as u16) << 8 | low as u16
-    }).collect();
+    let data: Vec<u16> = zipped
+        .map(|(&high, &low)| (high as u16) << 8 | low as u16)
+        .collect();
 
     // The first two bytes of the object file indicate where to load the program
     let orig = data[0];
@@ -87,69 +87,26 @@ fn run_file(
     }
 }
 
-fn start_output_thread(state: &mut VmState) -> std::thread::JoinHandle<()> {
-    let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-    let mutex = state.memory_mutex();
-
-    // // 20 fps = 1000ms/50ms
-    // let fps = time::Duration::from_millis(50);
+fn start_input_thread(tx: Sender<u16>) -> std::thread::JoinHandle<()> {
     let handle = thread::spawn(move || {
-        loop {
-            //thread::sleep(fps);
-            let mut memory = mutex.lock().unwrap();
-            memory[0xFE04] = 0xFFFF;
-            if memory[0xFE06] > 0 {
-                let c = (memory[0xFE06] as u8) as char;
-                print!("{}", c);
-                io::stdout().flush().unwrap();
-                memory[0xFE06] = 0;
-            }
-            if memory[0xFFFE] == 0 {
-                println!("bye from output");
-                break;
-            }
-        }
-    });
-
-    handle
-}
-
-fn start_input_thread(state: &mut VmState) -> std::thread::JoinHandle<()> {
-    let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-    let mutex = state.memory_mutex();
-
-    let handle = thread::spawn(move || {
-
         let stdin = 0; // couldn't get std::os::unix::io::FromRawFd to work
-                   // on /dev/stdin or /dev/tty
+                       // on /dev/stdin or /dev/tty
         let termios = Termios::from_fd(stdin).unwrap();
-        let mut new_termios = termios.clone();  // make a mutable copy of termios
-                                                // that we will modify
+        let mut new_termios = termios.clone(); // make a mutable copy of termios
+                                               // that we will modify
         new_termios.c_lflag &= !(ICANON | ECHO); // no echo and canonical mode
         tcsetattr(stdin, TCSANOW, &mut new_termios).unwrap();
 
         let stdin = io::stdin();
         let mut handle = stdin.lock();
+        let mut buffer: [u8; 1] = [0; 1];
+
+        debug!("Starting input thread");
 
         loop {
-            {
-                let mut memory = mutex.lock().unwrap();
-                memory[0xFE00] = 0x0;
-            }
-
-
-
-            let mut buffer: [u8; 1] = [0; 1];
             handle.read_exact(&mut buffer).unwrap();
-
-            let mut memory = mutex.lock().unwrap();
-            memory[0xFE00] = 0xFFFF;
-            memory[0xFE02] = buffer[0] as u16;
-
-            if memory[0xFFFE] == 0 {
-                println!("bye from input");
-                break;
-            }
+            debug!("Input thread received 0x{:x}", buffer[0] as u16);
+            tx.send(buffer[0] as u16);
         }
     });
 
@@ -195,17 +152,16 @@ fn main() -> io::Result<()> {
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let mut state = MyVmState::new(rx);
 
-    let inhandle = start_input_thread(&mut state); // TODO handle
-    let outhandle = start_output_thread(&mut state); // todo handle
-    let res = match run_file(&mut state, filenames, e) {
+    let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+    let inhandle = start_input_thread(input_tx); // TODO handle
+
     let res = match run_file(&mut state, filenames, e, throttle) {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
     };
 
-    outhandle.join().unwrap();
+    inhandle.join().unwrap();
     res
-
 }
 
 #[cfg(test)]
