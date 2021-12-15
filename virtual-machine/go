@@ -2,7 +2,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-LC3AS_DIR="${SCRIPT_DIR}/vendor/lc3/lc3tools"
+LC3AS_DIR="${SCRIPT_DIR}/../vendor/lc3tools"
 LC3AS="${LC3AS_DIR}/lc3as"
 
 function error {

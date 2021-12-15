@@ -1,3 +1,0 @@
-[submodule "vendor/lc3"]
-	path = vendor/lc3
-	url = https://github.com/edga/lc3.git

@@ -1,0 +1,7 @@
+lc3as
+lc3convert
+lc3sim
+lc3sim-tk
+*.o
+lex.*.*
+lc3tools/Makefile
