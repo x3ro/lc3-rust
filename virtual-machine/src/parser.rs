@@ -5,6 +5,7 @@ use state::Registers;
 use util;
 
 use std::result::Result;
+use std::fmt;
 
 trait BitTools {
     fn has_bit(&self, index: u8) -> bool;
@@ -58,27 +59,33 @@ impl Opcode {
     }
 }
 
+
+
+fn hex_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "0x{:02X?}", n)
+}
+
 use Instruction::*;
-#[derive(Debug)]
+#[derive(custom_debug::Debug)]
 pub enum Instruction {
-    Br { n: bool, z: bool, p: bool, pc_offset9: u16 },
+    Br { n: bool, z: bool, p: bool, #[debug(with = "hex_fmt")] pc_offset9: u16 },
     Jmp { base_r: Registers },
-    JsrImmediate { pc_offset11: u16 },
+    JsrImmediate { #[debug(with = "hex_fmt")] pc_offset11: u16 },
     JsrRegister { base_r: Registers },
-    AddImmediate { dr: Registers, sr1: Registers, imm5: u16 },
+    AddImmediate { dr: Registers, sr1: Registers, #[debug(with = "hex_fmt")] imm5: u16 },
     AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
-    AndImmediate { dr: Registers, sr1: Registers, imm5: u16 },
+    AndImmediate { dr: Registers, sr1: Registers, #[debug(with = "hex_fmt")] imm5: u16 },
     AndRegister { dr: Registers, sr1: Registers, sr2: Registers },
-    Ld { dr: Registers, offset9: u16 },
-    Ldi { dr: Registers, offset9: u16 },
-    Ldr { dr: Registers, base_r: Registers, offset6: u16 },
-    Lea { dr: Registers, offset9: u16 },
+    Ld { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
+    Ldi { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
+    Ldr { dr: Registers, base_r: Registers, #[debug(with = "hex_fmt")] offset6: u16 },
+    Lea { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
     Not { dr: Registers, sr: Registers },
     Rti { },
-    St { sr: Registers, pc_offset9: u16 },
-    Sti { sr: Registers, pc_offset9: u16 },
-    Str { sr: Registers, base_r: Registers, offset6: u16 },
-    Trap { trapvect8: u16 },
+    St { sr: Registers, #[debug(with = "hex_fmt")] pc_offset9: u16 },
+    Sti { sr: Registers, #[debug(with = "hex_fmt")] pc_offset9: u16 },
+    Str { sr: Registers, base_r: Registers, #[debug(with = "hex_fmt")] offset6: u16 },
+    Trap { #[debug(with = "hex_fmt")] trapvect8: u16 },
 }
 
 impl Instruction {
