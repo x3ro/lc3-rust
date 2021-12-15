@@ -117,7 +117,6 @@ fn start_input_thread(tx: Sender<u16>) -> std::thread::JoinHandle<()> {
 
         loop {
             handle.read_exact(&mut buffer).unwrap();
-            debug!("Input thread received 0x{:x}", buffer[0] as u16);
             tx.send(buffer[0] as u16);
         }
     });
@@ -128,7 +127,7 @@ fn start_input_thread(tx: Sender<u16>) -> std::thread::JoinHandle<()> {
 fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
-    let matches = App::new("My Super Program")
+    let matches = App::new("Rust LC3 simulator")
         .arg(
             Arg::with_name("programs")
                 .short("p")
