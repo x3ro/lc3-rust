@@ -19,7 +19,7 @@ impl Peripheral for TerminalDisplay {
 
         let character = (state.memory()[OS_DDR] & 0xFF) as u8;
         if character == 0 {
-            return
+            return;
         }
 
         print!("{}", character as char);
@@ -42,15 +42,13 @@ impl Peripheral for CapturingDisplay {
 
         let character = (state.memory()[OS_DDR] & 0xFF) as u8;
         if character == 0 {
-            return
+            return;
         }
 
         self.output.borrow_mut().push(character as char);
         state.memory()[OS_DDR] = 0;
     }
 }
-
-
 
 pub struct TerminalKeyboard {}
 impl Peripheral for TerminalKeyboard {

@@ -1,16 +1,16 @@
 use num_traits::FromPrimitive;
 
+use std::io::{self, Write};
 use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, MutexGuard};
-use std::io::{self, Write};
 
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
 
-#[derive(FromPrimitive,Debug)]
+#[derive(FromPrimitive, Debug)]
 pub enum Registers {
     R0 = 0,
     R1,
@@ -37,7 +37,7 @@ impl Registers {
     pub fn from_u16_or_panic(index: u16) -> Self {
         match Registers::from_u16(index) {
             Some(x) => x,
-            None => panic!("Register with u16 index <0x{:X}> does not exist", index)
+            None => panic!("Register with u16 index <0x{:X}> does not exist", index),
         }
     }
 }
@@ -47,8 +47,6 @@ pub enum ConditionFlags {
     Zero = 1 << 1,
     Negative = 1 << 2,
 }
-
-
 
 pub struct VmMemory {
     memory: [u16; MEM_SIZE],
@@ -132,16 +130,17 @@ pub struct MyVmState<'a> {
 
 impl<'a> MyVmState<'a> {
     pub fn new(interrupt_channel: Receiver<u16>) -> Self {
-        return MyVmState::new_with_display(
-            Box::new(DefaultVmDisplay{}),
-            interrupt_channel
-        );
+        return MyVmState::new_with_display(Box::new(DefaultVmDisplay {}), interrupt_channel);
     }
 
     pub fn new_with_display(d: Box<VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
         let mut x = Self {
-            memory: Arc::new(Mutex::new(VmMemory{memory: [0; MEM_SIZE]})),
-            registers: VmRegisters {registers: [0; REGISTER_COUNT]},
+            memory: Arc::new(Mutex::new(VmMemory {
+                memory: [0; MEM_SIZE],
+            })),
+            registers: VmRegisters {
+                registers: [0; REGISTER_COUNT],
+            },
             running: true,
             display: d,
             error: None,

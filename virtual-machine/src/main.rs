@@ -26,8 +26,8 @@ use clap::{App, Arg};
 mod util;
 mod opcodes;
 mod parser;
-mod state;
 mod peripheral;
+mod state;
 
 use opcodes::*;
 use parser::Instruction;
@@ -167,11 +167,10 @@ fn main() -> io::Result<()> {
     let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let in_handle = start_input_thread(input_tx); // TODO handle
 
-
-    let display = TerminalDisplay{};
+    let display = TerminalDisplay {};
     let opts = VmOptions {
         throttle,
-        peripherals: vec![&display]
+        peripherals: vec![&display],
     };
 
     let res = match run_file(&mut state, filenames, e, &opts) {
@@ -184,53 +183,84 @@ fn main() -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::cell::RefCell;
-    use peripheral::CapturingDisplay;
     use super::*;
+    use peripheral::CapturingDisplay;
     use state::ConditionFlags;
-
+    use std::cell::RefCell;
 
     // Utility functions
 
     #[inline]
     fn assert_cc_positive(state: &mut VmState) {
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), ConditionFlags::Positive as u16);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), 0);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), 0);
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
+            ConditionFlags::Positive as u16
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16),
+            0
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16),
+            0
+        );
     }
 
     #[inline]
     fn assert_cc_zero(state: &mut VmState) {
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), 0);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), ConditionFlags::Zero as u16);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), 0);
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
+            0
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16),
+            ConditionFlags::Zero as u16
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16),
+            0
+        );
     }
 
     #[inline]
     fn assert_cc_negative(state: &mut VmState) {
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16), 0);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16), 0);
-        assert_eq!(state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16), ConditionFlags::Negative as u16);
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
+            0
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16),
+            0
+        );
+        assert_eq!(
+            state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16),
+            ConditionFlags::Negative as u16
+        );
     }
 
     fn assert_supervisor_mode(state: &mut VmState, enabled: bool) {
         if enabled {
-            assert_eq!(state.registers()[Registers::PSR] & 0b1000_0000_0000_0000, 0b1000_0000_0000_0000);
+            assert_eq!(
+                state.registers()[Registers::PSR] & 0b1000_0000_0000_0000,
+                0b1000_0000_0000_0000
+            );
         } else {
             assert_eq!(state.registers()[Registers::PSR] & 0b1000_0000_0000_0000, 0);
         }
     }
 
-
     // Tests
 
-    const DEFAULT_OPTS: VmOptions = VmOptions{throttle:None, peripherals: vec![]};
+    const DEFAULT_OPTS: VmOptions = VmOptions {
+        throttle: None,
+        peripherals: vec![],
+    };
 
     #[test]
     fn test_br() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/br.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/br.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok());
         assert_eq!(state.registers()[Registers::R2], 1);
 
@@ -286,7 +316,7 @@ mod tests {
     fn test_lea() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/lea.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/lea.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok());
         assert_eq!(state.registers()[Registers::R0], 0x3002);
     }
@@ -295,7 +325,12 @@ mod tests {
     fn test_add_immediate() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/add_immediate.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(
+            &mut state,
+            vec!["tests/add_immediate.obj"],
+            0x3000,
+            &DEFAULT_OPTS,
+        );
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x7);
@@ -316,7 +351,12 @@ mod tests {
     fn test_add_register() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/add_register.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(
+            &mut state,
+            vec!["tests/add_register.obj"],
+            0x3000,
+            &DEFAULT_OPTS,
+        );
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x10);
@@ -337,7 +377,7 @@ mod tests {
     fn test_ld() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/ld.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/ld.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok());
 
         assert_eq!(state.registers()[Registers::R0], 0x4242);
@@ -358,7 +398,7 @@ mod tests {
     fn test_jmp() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/jmp.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/jmp.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3005);
@@ -369,7 +409,12 @@ mod tests {
     fn test_jsr_immediate() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/jsr_immediate.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(
+            &mut state,
+            vec!["tests/jsr_immediate.obj"],
+            0x3000,
+            &DEFAULT_OPTS,
+        );
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3002);
@@ -381,7 +426,12 @@ mod tests {
     fn test_jsr_register() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/jsr_register.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(
+            &mut state,
+            vec!["tests/jsr_register.obj"],
+            0x3000,
+            &DEFAULT_OPTS,
+        );
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::PC], 0x3003);
@@ -395,7 +445,7 @@ mod tests {
     fn test_ldi() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/ldi.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/ldi.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 0xFFFF);
@@ -406,7 +456,7 @@ mod tests {
     fn test_ldr() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/ldr.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/ldr.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 0x3004);
@@ -418,7 +468,7 @@ mod tests {
     fn test_and() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/and.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/and.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R2], 0x1200);
@@ -439,7 +489,7 @@ mod tests {
     fn test_not() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/not.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/not.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R1], 0xEDCB);
@@ -450,7 +500,7 @@ mod tests {
     fn test_st() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/st.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/st.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3003], (-7i16) as u16);
@@ -460,7 +510,7 @@ mod tests {
     fn test_sti() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/sti.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/sti.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3003], (-8i16) as u16);
@@ -470,7 +520,7 @@ mod tests {
     fn test_str() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/str.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/str.obj"], 0x3000, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.memory()[0x3004], (-9i16) as u16);
@@ -480,7 +530,7 @@ mod tests {
     fn test_trap() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/trap.obj"), 0x200, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/trap.obj"], 0x200, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 15);
@@ -490,7 +540,12 @@ mod tests {
     fn test_br_backwards() {
         let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/br_backwards.obj"), 0x3000, &DEFAULT_OPTS);
+        let result = run_file(
+            &mut state,
+            vec!["tests/br_backwards.obj"],
+            0x3000,
+            &DEFAULT_OPTS,
+        );
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_eq!(state.registers()[Registers::R0], 10);
@@ -500,7 +555,7 @@ mod tests {
     fn test_rti() {
         let (tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
         let mut state = MyVmState::new(rx);
-        let result = run_file(&mut state, vec!("tests/rti.obj"), 0x200, &DEFAULT_OPTS);
+        let result = run_file(&mut state, vec!["tests/rti.obj"], 0x200, &DEFAULT_OPTS);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
         assert_supervisor_mode(&mut state, false);
@@ -569,7 +624,9 @@ mod tests {
 
     #[test]
     fn test_puts() {
-        let mut display = CapturingDisplay { output: RefCell::new("".into()) };
+        let mut display = CapturingDisplay {
+            output: RefCell::new("".into()),
+        };
 
         {
             let opts = VmOptions {
@@ -578,8 +635,8 @@ mod tests {
             };
 
             let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-            let mut state = MyVmState::new( rx);
-            let result = run_file(&mut state, vec!("tests/puts.obj"), 0x100, &opts);
+            let mut state = MyVmState::new(rx);
+            let result = run_file(&mut state, vec!["tests/puts.obj"], 0x100, &opts);
             assert!(result.is_ok());
         }
 

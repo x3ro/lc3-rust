@@ -4,8 +4,8 @@ use num_traits::FromPrimitive;
 use state::Registers;
 use util;
 
-use std::result::Result;
 use std::fmt;
+use std::result::Result;
 
 trait BitTools {
     fn has_bit(&self, index: u8) -> bool;
@@ -30,21 +30,21 @@ impl BitTools for u16 {
 
 #[derive(FromPrimitive)]
 pub enum Opcode {
-    BR   = 0x0, /* branch */
-    ADD  = 0x1, /* add  */
-    LD   = 0x2, /* load */
-    ST   = 0x3, /* store */
-    JSR  = 0x4, /* jump register */
-    AND  = 0x5, /* bitwise and */
-    LDR  = 0x6, /* load register */
-    STR  = 0x7, /* store register */
-    RTI  = 0x8, /* unused */
-    NOT  = 0x9, /* bitwise not */
-    LDI  = 0xA, /* load indirect */
-    STI  = 0xB, /* store indirect */
-    JMP  = 0xC, /* jump */
-    RES  = 0xD, /* reserved (unused) */
-    LEA  = 0xE, /* load effective address */
+    BR = 0x0,   /* branch */
+    ADD = 0x1,  /* add  */
+    LD = 0x2,   /* load */
+    ST = 0x3,   /* store */
+    JSR = 0x4,  /* jump register */
+    AND = 0x5,  /* bitwise and */
+    LDR = 0x6,  /* load register */
+    STR = 0x7,  /* store register */
+    RTI = 0x8,  /* unused */
+    NOT = 0x9,  /* bitwise not */
+    LDI = 0xA,  /* load indirect */
+    STI = 0xB,  /* store indirect */
+    JMP = 0xC,  /* jump */
+    RES = 0xD,  /* reserved (unused) */
+    LEA = 0xE,  /* load effective address */
     TRAP = 0xF, /* execute trap */
 }
 
@@ -54,12 +54,10 @@ impl Opcode {
         let opcode = instruction >> 12;
         match Opcode::from_u16(opcode) {
             Some(x) => x,
-            None => panic!("Could not instantiate opcode from <0x{:X}>", opcode)
+            None => panic!("Could not instantiate opcode from <0x{:X}>", opcode),
         }
     }
 }
-
-
 
 fn hex_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "0x{:02X?}", n)
@@ -68,28 +66,95 @@ fn hex_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
 use Instruction::*;
 #[derive(custom_debug::Debug)]
 pub enum Instruction {
-    Br { n: bool, z: bool, p: bool, #[debug(with = "hex_fmt")] pc_offset9: u16 },
-    Jmp { base_r: Registers },
-    JsrImmediate { #[debug(with = "hex_fmt")] pc_offset11: u16 },
-    JsrRegister { base_r: Registers },
-    AddImmediate { dr: Registers, sr1: Registers, #[debug(with = "hex_fmt")] imm5: u16 },
-    AddRegister { dr: Registers, sr1: Registers, sr2: Registers },
-    AndImmediate { dr: Registers, sr1: Registers, #[debug(with = "hex_fmt")] imm5: u16 },
-    AndRegister { dr: Registers, sr1: Registers, sr2: Registers },
-    Ld { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
-    Ldi { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
-    Ldr { dr: Registers, base_r: Registers, #[debug(with = "hex_fmt")] offset6: u16 },
-    Lea { dr: Registers, #[debug(with = "hex_fmt")] offset9: u16 },
-    Not { dr: Registers, sr: Registers },
-    Rti { },
-    St { sr: Registers, #[debug(with = "hex_fmt")] pc_offset9: u16 },
-    Sti { sr: Registers, #[debug(with = "hex_fmt")] pc_offset9: u16 },
-    Str { sr: Registers, base_r: Registers, #[debug(with = "hex_fmt")] offset6: u16 },
-    Trap { #[debug(with = "hex_fmt")] trapvect8: u16 },
+    Br {
+        n: bool,
+        z: bool,
+        p: bool,
+        #[debug(with = "hex_fmt")]
+        pc_offset9: u16,
+    },
+    Jmp {
+        base_r: Registers,
+    },
+    JsrImmediate {
+        #[debug(with = "hex_fmt")]
+        pc_offset11: u16,
+    },
+    JsrRegister {
+        base_r: Registers,
+    },
+    AddImmediate {
+        dr: Registers,
+        sr1: Registers,
+        #[debug(with = "hex_fmt")]
+        imm5: u16,
+    },
+    AddRegister {
+        dr: Registers,
+        sr1: Registers,
+        sr2: Registers,
+    },
+    AndImmediate {
+        dr: Registers,
+        sr1: Registers,
+        #[debug(with = "hex_fmt")]
+        imm5: u16,
+    },
+    AndRegister {
+        dr: Registers,
+        sr1: Registers,
+        sr2: Registers,
+    },
+    Ld {
+        dr: Registers,
+        #[debug(with = "hex_fmt")]
+        offset9: u16,
+    },
+    Ldi {
+        dr: Registers,
+        #[debug(with = "hex_fmt")]
+        offset9: u16,
+    },
+    Ldr {
+        dr: Registers,
+        base_r: Registers,
+        #[debug(with = "hex_fmt")]
+        offset6: u16,
+    },
+    Lea {
+        dr: Registers,
+        #[debug(with = "hex_fmt")]
+        offset9: u16,
+    },
+    Not {
+        dr: Registers,
+        sr: Registers,
+    },
+    Rti {},
+    St {
+        sr: Registers,
+        #[debug(with = "hex_fmt")]
+        pc_offset9: u16,
+    },
+    Sti {
+        sr: Registers,
+        #[debug(with = "hex_fmt")]
+        pc_offset9: u16,
+    },
+    Str {
+        sr: Registers,
+        base_r: Registers,
+        #[debug(with = "hex_fmt")]
+        offset6: u16,
+    },
+    Trap {
+        #[debug(with = "hex_fmt")]
+        trapvect8: u16,
+    },
 }
 
 impl Instruction {
-    pub fn from_raw(raw: u16) -> Result<Self,String> {
+    pub fn from_raw(raw: u16) -> Result<Self, String> {
         let opcode = Opcode::from_instruction(raw);
 
         match opcode {
@@ -108,7 +173,7 @@ impl Instruction {
             Opcode::STI => Ok(Self::from_sti(raw)),
             Opcode::STR => Ok(Self::from_str(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
-            _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16))
+            _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16)),
         }
     }
 
@@ -143,7 +208,12 @@ impl Instruction {
         let z = raw.has_bit(10);
         let p = raw.has_bit(9);
         let pc_offset9 = raw.to_immediate(9);
-        Br { n, z, p, pc_offset9 }
+        Br {
+            n,
+            z,
+            p,
+            pc_offset9,
+        }
     }
 
     fn from_jmp(raw: u16) -> Self {
@@ -177,7 +247,11 @@ impl Instruction {
         let dr = raw.to_register(9);
         let base_r = raw.to_register(6);
         let offset6 = raw.to_immediate(6);
-        Ldr { dr, base_r, offset6 }
+        Ldr {
+            dr,
+            base_r,
+            offset6,
+        }
     }
 
     fn from_lea(raw: u16) -> Self {
@@ -208,7 +282,11 @@ impl Instruction {
         let sr = raw.to_register(9);
         let base_r = raw.to_register(6);
         let offset6 = raw.to_immediate(6);
-        Str { sr, base_r, offset6 }
+        Str {
+            sr,
+            base_r,
+            offset6,
+        }
     }
 
     fn from_trap(raw: u16) -> Self {
