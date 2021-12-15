@@ -1,4 +1,6 @@
 use num_traits::FromPrimitive;
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
 
 use std::io::{self, Write};
 use std::ops::Index;
@@ -26,7 +28,7 @@ pub enum Registers {
     // VM. For convenience, they are currently defined in the same
     // enum as the general purpose registers.
     // TODO: evaluate whether a separation of internal / external
-    // registers makes sense
+    //       registers makes sense
     PC,
     PSR,
     SSP,
@@ -50,17 +52,30 @@ pub enum ConditionFlags {
 
 pub struct VmMemory {
     memory: [u16; MEM_SIZE],
+    accesses: RefCell<Vec<u16>>,
+}
+
+impl VmMemory {
+    pub fn was_accessed(&self, index: u16) -> bool {
+        self.accesses.borrow().contains(&index)
+    }
+
+    pub fn reset_accesses(&self) {
+        self.accesses.borrow_mut().clear();
+    }
 }
 
 impl Index<u16> for VmMemory {
     type Output = u16;
     fn index(&self, index: u16) -> &u16 {
+        self.accesses.borrow_mut().push(index);
         &self.memory[index as usize]
     }
 }
 
 impl IndexMut<u16> for VmMemory {
     fn index_mut(&mut self, index: u16) -> &mut u16 {
+        self.accesses.borrow_mut().push(index);
         &mut self.memory[index as usize]
     }
 }
@@ -109,6 +124,7 @@ impl VmDisplay for DefaultVmDisplay {
 }
 
 pub trait VmState {
+    fn tick(&mut self);
     fn running(&mut self) -> bool;
     fn memory(&self) -> MutexGuard<VmMemory>;
     fn registers(&mut self) -> &mut VmRegisters;
@@ -137,6 +153,7 @@ impl<'a> MyVmState<'a> {
         let mut x = Self {
             memory: Arc::new(Mutex::new(VmMemory {
                 memory: [0; MEM_SIZE],
+                accesses: RefCell::new(vec![]),
             })),
             registers: VmRegisters {
                 registers: [0; REGISTER_COUNT],
@@ -166,11 +183,8 @@ impl<'a> MyVmState<'a> {
 }
 
 impl<'a> VmState for MyVmState<'a> {
-    // If the VM is halted, this was caused by a HALT trap
-    // We need to increment the PC to resume, otherwise the
-    // VM would simply execute HALT again
-    fn resume(&mut self) {
-        self.memory()[0xFFFE] |= 0x8000
+    fn tick(&mut self) {
+        self.memory().reset_accesses();
     }
 
     fn running(&mut self) -> bool {
@@ -179,11 +193,6 @@ impl<'a> VmState for MyVmState<'a> {
 
     fn memory(&self) -> MutexGuard<VmMemory> {
         self.memory.lock().unwrap()
-    }
-
-    fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
-        let foo = &self.memory;
-        Arc::clone(foo)
     }
 
     fn registers(&mut self) -> &mut VmRegisters {
@@ -198,7 +207,19 @@ impl<'a> VmState for MyVmState<'a> {
         self.registers()[Registers::PC] += 1;
     }
 
+    // If the VM is halted, this was caused by a HALT trap
+    // We need to increment the PC to resume, otherwise the
+    // VM would simply execute HALT again
+    fn resume(&mut self) {
+        self.memory()[0xFFFE] |= 0x8000
+    }
+
     fn interrupt_channel(&mut self) -> &Receiver<u16> {
         &self.interrupt_channel
+    }
+
+    fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
+        let foo = &self.memory;
+        Arc::clone(foo)
     }
 }

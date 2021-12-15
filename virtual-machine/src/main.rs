@@ -16,8 +16,6 @@ extern crate log;
 #[macro_use]
 extern crate num_derive;
 extern crate num_traits;
-extern crate termios;
-use termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 
 extern crate clap;
 use clap::{App, Arg};
@@ -31,14 +29,15 @@ mod state;
 
 use opcodes::*;
 use parser::Instruction;
-use peripheral::{Peripheral, TerminalDisplay};
+use peripheral::{AutomatedKeyboard, Peripheral, TerminalDisplay, TerminalKeyboard};
 use state::MyVmState;
 use state::Registers;
 use state::VmState;
 
-struct VmOptions<'a> {
+pub struct VmOptions<'a> {
     pub throttle: Option<Duration>,
     pub peripherals: Vec<&'a Peripheral>,
+    pub debug_trap_enabled: bool,
 }
 
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
@@ -69,6 +68,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
 
 fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     while state.running() {
+        state.tick();
         execute_next_instruction(state)?;
 
         for p in &opts.peripherals {
@@ -97,31 +97,6 @@ fn run_file(
         Ok(x) => Ok(x),
         Err(x) => Err(io::Error::new(io::ErrorKind::Other, x)),
     }
-}
-
-fn start_input_thread(tx: Sender<u16>) -> std::thread::JoinHandle<()> {
-    let handle = thread::spawn(move || {
-        let stdin = 0; // couldn't get std::os::unix::io::FromRawFd to work
-                       // on /dev/stdin or /dev/tty
-        let termios = Termios::from_fd(stdin).unwrap();
-        let mut new_termios = termios.clone(); // make a mutable copy of termios
-                                               // that we will modify
-        new_termios.c_lflag &= !(ICANON | ECHO); // no echo and canonical mode
-        tcsetattr(stdin, TCSANOW, &mut new_termios).unwrap();
-
-        let stdin = io::stdin();
-        let mut handle = stdin.lock();
-        let mut buffer: [u8; 1] = [0; 1];
-
-        debug!("Starting input thread");
-
-        loop {
-            handle.read_exact(&mut buffer).unwrap();
-            tx.send(buffer[0] as u16);
-        }
-    });
-
-    handle
 }
 
 fn main() -> io::Result<()> {
@@ -163,13 +138,12 @@ fn main() -> io::Result<()> {
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let mut state = MyVmState::new(rx);
 
-    let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-    let in_handle = start_input_thread(input_tx); // TODO handle
-
     let display = TerminalDisplay {};
+    let keyboard = TerminalKeyboard::new();
     let opts = VmOptions {
         throttle,
-        peripherals: vec![&display],
+        peripherals: vec![&display, &keyboard],
+        debug_trap_enabled: true,
     };
 
     let res = match run_file(&mut state, filenames, e, &opts) {
@@ -183,7 +157,7 @@ fn main() -> io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use peripheral::CapturingDisplay;
+    use peripheral::{AutomatedKeyboard, CapturingDisplay};
     use state::ConditionFlags;
     use std::cell::RefCell;
 
@@ -253,6 +227,7 @@ mod tests {
     const DEFAULT_OPTS: VmOptions = VmOptions {
         throttle: None,
         peripherals: vec![],
+        debug_trap_enabled: true,
     };
 
     #[test]
@@ -631,6 +606,7 @@ mod tests {
             let opts = VmOptions {
                 throttle: None,
                 peripherals: vec![&display],
+                debug_trap_enabled: true,
             };
 
             let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
@@ -640,5 +616,55 @@ mod tests {
         }
 
         assert_eq!("Hello World!\n", display.output.borrow().as_str());
+    }
+
+    #[test]
+    fn test_os() {
+        pretty_env_logger::init();
+
+        let mut display = CapturingDisplay {
+            output: RefCell::new("".into()),
+        };
+
+        let mut keyboard = AutomatedKeyboard::new("merp".into());
+
+        {
+            let opts = VmOptions {
+                throttle: None,
+                peripherals: vec![&display, &keyboard],
+                debug_trap_enabled: true,
+            };
+
+            let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
+            let mut state = MyVmState::new(rx);
+            let result = run_file(&mut state, vec!["tests/os.obj"], 0x200, &opts);
+            assert!(result.is_ok());
+        }
+
+        let expected = r#"
+Welcome to the LC-3 simulator.
+
+The contents of the LC-3 tools distribution, including sources, management
+tools, and data, are Copyright (c) 2003 Steven S. Lumetta.
+
+The LC-3 tools distribution is free software covered by the GNU General
+Public License, and you are welcome to modify it and/or distribute copies
+of it under certain conditions.  The file COPYING (distributed with the
+tools) specifies those conditions.  There is absolutely no warranty for
+the LC-3 tools distribution, as described in the file NO_WARRANTY (also
+distributed with the tools).
+
+Have fun.
+
+Input a character> m
+
+Input a character> e
+
+Input a character> r
+
+Input a character> p
+"#;
+
+        assert_eq!(expected, display.output.borrow().as_str());
     }
 }
