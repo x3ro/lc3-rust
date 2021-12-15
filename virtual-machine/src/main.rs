@@ -157,7 +157,7 @@ fn main() -> io::Result<()> {
     let mut state = MyVmState::new(rx);
 
     let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-    let inhandle = start_input_thread(input_tx); // TODO handle
+    let in_handle = start_input_thread(input_tx); // TODO handle
 
     let opts = VmOptions {
         throttle
@@ -168,7 +168,7 @@ fn main() -> io::Result<()> {
         Err(x) => Err(x),
     };
 
-    inhandle.join().unwrap();
+    in_handle.join().unwrap();
     res
 }
 
