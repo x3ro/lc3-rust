@@ -28,19 +28,31 @@ function ensure_lc3_tools {
     fi
 }
 
-function task_assemble_tests {
+function cmd_assemble_tests {
     for asm_file in $SCRIPT_DIR/tests/*.asm; do
         ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
     done
 }
 
 function cmd_test {
-    task_assemble_tests
+    cmd_assemble_tests
     cargo test "$@"
 }
 
+function cmd_os {
+  cmd_assemble_tests
+  cargo run -- --program tests/os.obj --entry-point 0x200
+}
+
 function cmd_usage {
-    echo "TODO usage";
+    echo "
+./go [cmd]
+
+  test              Run all tests
+  assemble-tests    Assemble all testcases (this does not run the tests)
+  os                Runs the 'LC3 OS' test case in interactive mode
+
+    ";
 }
 
 ensure_env
@@ -54,6 +66,7 @@ fi
 
 case "${command}" in
     test) cmd_test "$@" ;;
-    assemble-tests) task_assemble_tests "$@" ;;
+    assemble-tests) cmd_assemble_tests "$@" ;;
+    os)  cmd_os "$@" ;;
     *) cmd_usage
 esac
