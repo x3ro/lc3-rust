@@ -1,12 +1,17 @@
 use std::fs::File;
 use std::io;
 use std::io::prelude::*;
-use std::sync::mpsc::{Sender, Receiver};
 use std::sync::mpsc;
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time;
+use std::time::Duration;
 
 type Result<T> = std::result::Result<T, String>;
+
+extern crate pretty_env_logger;
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate num_derive;
@@ -55,20 +60,28 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
     Ok(())
 }
 
-fn run(state: &mut VmState) -> Result<()> {
+fn run(state: &mut VmState, throttle: Option<Duration>) -> Result<()> {
     while state.running() {
         execute_next_instruction(state)?;
+        if throttle.is_some() {
+            thread::sleep(throttle.unwrap());
+        }
     }
     Ok(())
 }
 
-fn run_file(state: &mut VmState, filenames: Vec<&str>, start_pc: u16) -> io::Result<()> {
+fn run_file(
+    state: &mut VmState,
+    filenames: Vec<&str>,
+    start_pc: u16,
+    throttle: Option<Duration>,
+) -> io::Result<()> {
     for filename in filenames {
         load_object_file(filename, state)?;
     }
 
     state.registers()[Registers::PC] = start_pc;
-    match run(state) {
+    match run(state, throttle) {
         Ok(x) => Ok(x),
         Err(x) => Err(io::Error::new(io::ErrorKind::Other, x)),
     }
@@ -144,22 +157,39 @@ fn start_input_thread(state: &mut VmState) -> std::thread::JoinHandle<()> {
 }
 
 fn main() -> io::Result<()> {
+    pretty_env_logger::init();
+
     let matches = App::new("My Super Program")
-        .arg(Arg::with_name("programs")
-            .short("p")
-            .long("program")
-            .value_name("FILE")
-            .multiple(true)
-            .required(true)
-            .takes_value(true))
-        .arg(Arg::with_name("entry_point")
-            .short("e")
-            .long("entry-point")
-            .takes_value(true))
+        .arg(
+            Arg::with_name("programs")
+                .short("p")
+                .long("program")
+                .value_name("FILE")
+                .multiple(true)
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("entry_point")
+                .short("e")
+                .long("entry-point")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::with_name("throttle")
+                .long("throttle")
+                .value_name("MILLISECONDS")
+                .takes_value(true),
+        )
         .get_matches();
 
     let filenames: Vec<_> = matches.values_of("programs").unwrap().collect();
     let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
+    let throttle = matches
+        .value_of("throttle")
+        .and_then(|x| x.parse::<u64>().ok())
+        .map(Duration::from_millis);
+
     let e = u16::from_str_radix(entry_point.trim_start_matches("0x"), 16).unwrap();
 
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
@@ -168,6 +198,7 @@ fn main() -> io::Result<()> {
     let inhandle = start_input_thread(&mut state); // TODO handle
     let outhandle = start_output_thread(&mut state); // todo handle
     let res = match run_file(&mut state, filenames, e) {
+    let res = match run_file(&mut state, filenames, e, throttle) {
         Ok(_) => Ok(()),
         Err(x) => Err(x),
     };
