@@ -13,6 +13,12 @@ fn update_condition_codes(state: &mut VmState, value: u16) {
         x if x > 0 => state.registers()[Registers::PSR] |= ConditionFlags::Positive as u16,
         _ => state.registers()[Registers::PSR] |= ConditionFlags::Zero as u16,
     }
+
+    let psr = state.registers()[Registers::PSR];
+    let n = psr & ConditionFlags::Negative as u16;
+    let z = psr & ConditionFlags::Zero as u16;
+    let p = psr & ConditionFlags::Positive as u16;
+    debug!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
 }
 
 pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
@@ -27,7 +33,7 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    debug!("PC<0x{:X}> {:?}", pc, instruction);
+    trace!("PC<0x{:X}> {:?}", pc, instruction);
 
     match instruction {
             Instruction::AddRegister { dr, sr1, sr2 } => {
@@ -98,6 +104,9 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
                 let address1 = binary_add(pc + 1, offset9);
                 let address2 = state.memory()[address1];
                 let result = state.memory()[address2];
+
+                debug!("LDI {:?}, mem[0x{:x}] (value = 0x{:x})", dr, address2, result);
+
                 state.registers()[dr] = result;
                 update_condition_codes(state, result);
             },
@@ -162,12 +171,13 @@ pub fn execute_next_instruction(state: &mut VmState) -> Result<(), String> {
             Instruction::Trap { trapvect8 } => {
                 match trapvect8 {
                     // TODO: Remove these super-hacky VM-handled traps
-                    0x22 => trap_puts(state),
+                    // 0x22 => trap_puts(state),
                     // Hacky halt TRAP catch to make writing test cases easier, i.e. not
                     // having to load HALT routine code for every test-case, and being
                     // able to observe condition codes / register states just before the HALT
                     // TODO: Think of a better way to handle this
                     0x25 => {
+                        info!("Halting!");
                         state.memory()[0xFFFE] = 0;
                     },
                     _ => {

@@ -27,15 +27,18 @@ mod util;
 mod opcodes;
 mod parser;
 mod state;
+mod peripheral;
 
 use opcodes::*;
 use parser::Instruction;
+use peripheral::{Peripheral, TerminalDisplay};
 use state::MyVmState;
 use state::Registers;
 use state::VmState;
 
-struct VmOptions {
-    pub throttle: Option<Duration>
+struct VmOptions<'a> {
+    pub throttle: Option<Duration>,
+    pub peripherals: Vec<&'a Peripheral>,
 }
 
 fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
@@ -67,6 +70,11 @@ fn load_object_file(filename: &str, state: &mut VmState) -> io::Result<()> {
 fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     while state.running() {
         execute_next_instruction(state)?;
+
+        for p in &opts.peripherals {
+            p.run(state);
+        }
+
         if opts.throttle.is_some() {
             thread::sleep(opts.throttle.unwrap());
         }
@@ -159,8 +167,11 @@ fn main() -> io::Result<()> {
     let (input_tx, input_rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let in_handle = start_input_thread(input_tx); // TODO handle
 
+
+    let display = TerminalDisplay{};
     let opts = VmOptions {
-        throttle
+        throttle,
+        peripherals: vec![&display]
     };
 
     let res = match run_file(&mut state, filenames, e, &opts) {
@@ -168,27 +179,15 @@ fn main() -> io::Result<()> {
         Err(x) => Err(x),
     };
 
-    in_handle.join().unwrap();
     res
 }
 
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+    use peripheral::CapturingDisplay;
     use super::*;
     use state::ConditionFlags;
-
-
-    // Test doubles
-
-    pub struct TestVmDisplay<'a> {
-        pub output: &'a mut String
-    }
-
-    impl<'a> state::VmDisplay for TestVmDisplay<'a> {
-        fn print(&mut self, c: u8) -> () {
-            self.output.push(c as char)
-        }
-    }
 
 
     // Utility functions
@@ -225,7 +224,7 @@ mod tests {
 
     // Tests
 
-    const DEFAULT_OPTS: VmOptions = VmOptions{throttle:None};
+    const DEFAULT_OPTS: VmOptions = VmOptions{throttle:None, peripherals: vec![]};
 
     #[test]
     fn test_br() {
@@ -570,17 +569,20 @@ mod tests {
 
     #[test]
     fn test_puts() {
-        let mut output = String::new();
+        let mut display = CapturingDisplay { output: RefCell::new("".into()) };
+
         {
-            let d = TestVmDisplay{
-                output: &mut output
+            let opts = VmOptions {
+                throttle: None,
+                peripherals: vec![&display],
             };
 
             let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
-            let mut state = MyVmState::new_with_display(Box::new(d), rx);
-            let result = run_file(&mut state, vec!("tests/puts.obj"), 0x3000, &DEFAULT_OPTS);
+            let mut state = MyVmState::new( rx);
+            let result = run_file(&mut state, vec!("tests/puts.obj"), 0x100, &opts);
             assert!(result.is_ok());
         }
-        assert_eq!("Hello World!\n", &mut output);
+
+        assert_eq!("Hello World!\n", display.output.borrow().as_str());
     }
 }
