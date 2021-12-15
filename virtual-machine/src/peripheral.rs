@@ -23,6 +23,7 @@ const OS_KBDR: u16 = 0xFE02;
 // In order to give the VM application time to process keyboard input, we have to wait
 // a couple of instructions until we write the next character into memory. This constant
 // indicates how many instructions we wait.
+#[cfg(test)]
 const KEYBOARD_UPDATE_SPEED: u8 = 20;
 
 // Display status and display data register
@@ -72,17 +73,13 @@ impl Peripheral for CapturingDisplay {
 
 pub struct TerminalKeyboard {
     rx: Receiver<char>,
-    counter: RefCell<u8>,
 }
 
 impl TerminalKeyboard {
     pub fn new() -> TerminalKeyboard {
         let (tx, rx): (Sender<char>, Receiver<char>) = mpsc::channel();
         Self::start_input_thread(tx);
-        return TerminalKeyboard {
-            rx,
-            counter: RefCell::new(KEYBOARD_UPDATE_SPEED),
-        };
+        return TerminalKeyboard { rx };
     }
 
     fn start_input_thread(tx: Sender<char>) -> std::thread::JoinHandle<()> {
@@ -121,17 +118,11 @@ impl Peripheral for TerminalKeyboard {
             return;
         }
 
-        let ref mut counter = *self.counter.borrow_mut();
-        if *counter > 0 {
-            *counter -= 1;
-            return;
-        }
-        *counter = KEYBOARD_UPDATE_SPEED;
-
         let data = self.rx.try_recv().ok();
         if let Some(char) = data {
-            state.memory()[OS_KBDR] = char as u16;
+            // Setting bit[15] on the KBSR indicates the a new character is ready
             state.memory()[OS_KBSR] = 0b1000_0000_0000_0000;
+            state.memory()[OS_KBDR] = char as u16;
             debug!("Wrote character '{:?}' into memory", char);
         }
     }
@@ -173,8 +164,9 @@ impl Peripheral for AutomatedKeyboard {
         let kbsr_access = state.memory().was_accessed(OS_KBSR);
         if kbsr_access {
             if let Some(char) = self.output.borrow_mut().pop() {
-                state.memory()[OS_KBDR] = char as u16;
+                // Setting bit[15] on the KBSR indicates the a new character is ready
                 state.memory()[OS_KBSR] = 0b1000_0000_0000_0000;
+                state.memory()[OS_KBDR] = char as u16;
                 warn!("Wrote character '{:?}' into memory", char);
             }
         }
