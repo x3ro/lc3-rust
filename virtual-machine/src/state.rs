@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
 
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, Debug, Clone)]
 pub enum Registers {
     R0 = 0,
     R1,
@@ -95,16 +95,32 @@ pub struct VmRegisters {
     registers: [u16; REGISTER_COUNT],
 }
 
+impl Index<&Registers> for VmRegisters {
+    type Output = u16;
+    fn index(&self, index: &Registers) -> &u16 {
+        // TODO: This is not very efficient (cloning here reduced performance by ~5%)
+        //      Is there another way we can index into the `registers` here, without having to
+        //      copy the value?
+        &self.registers[index.clone() as usize]
+    }
+}
+
+impl IndexMut<&Registers> for VmRegisters {
+    fn index_mut(&mut self, index: &Registers) -> &mut u16 {
+        &mut self.registers[index.clone() as usize]
+    }
+}
+
 impl Index<Registers> for VmRegisters {
     type Output = u16;
     fn index(&self, index: Registers) -> &u16 {
-        &self.registers[index as usize]
+        &self[&index]
     }
 }
 
 impl IndexMut<Registers> for VmRegisters {
     fn index_mut(&mut self, index: Registers) -> &mut u16 {
-        &mut self.registers[index as usize]
+        &mut self[&index]
     }
 }
 

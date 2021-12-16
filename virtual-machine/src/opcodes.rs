@@ -18,7 +18,7 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
     let n = psr & ConditionFlags::Negative as u16;
     let z = psr & ConditionFlags::Zero as u16;
     let p = psr & ConditionFlags::Positive as u16;
-    debug!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
+    trace!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
 }
 
 pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
@@ -29,16 +29,28 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
 
     match instruction {
         Instruction::AddRegister { dr, sr1, sr2 } => {
-            let sr1_val = state.registers()[sr1];
-            let sr2_val = state.registers()[sr2];
+            let sr1_val = state.registers()[&sr1];
+            let sr2_val = state.registers()[&sr2];
             let result = binary_add(sr1_val, sr2_val);
+
+            debug!(
+                "ADD {:?}, {:?} (= 0x{:x}), {:?} (= 0x{:x})",
+                dr, sr1, sr1_val, sr2, sr2_val
+            );
+
             state.registers()[dr] = result;
             update_condition_codes(state, result);
         }
 
         Instruction::AddImmediate { dr, sr1, imm5 } => {
-            let sr1_val = state.registers()[sr1];
+            let sr1_val = state.registers()[&sr1];
             let result = binary_add(sr1_val, imm5);
+
+            debug!(
+                "ADD {:?}, {:?} (= 0x{:x}), 0x{:x}",
+                dr, sr1, sr1_val, imm5
+            );
+
             state.registers()[dr] = result;
             update_condition_codes(state, result);
         }
