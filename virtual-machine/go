@@ -36,7 +36,7 @@ function cmd_assemble_tests {
 
 function cmd_test {
     cmd_assemble_tests
-    cargo test "$@"
+    RUST_LOG="" cargo test "$@"
 }
 
 function cmd_os {
