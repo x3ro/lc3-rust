@@ -193,10 +193,7 @@ impl VmState for MyVmState {
     fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
     }
-
-    // If the VM is halted, this was caused by a HALT trap
-    // We need to increment the PC to resume, otherwise the
-    // VM would simply execute HALT again
+    
     fn resume(&mut self) {
         self.memory()[0xFFFE] |= 0x8000
     }
