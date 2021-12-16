@@ -149,7 +149,7 @@ impl Peripheral for AutomatedKeyboard {
     fn run(&self, state: &mut dyn VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
-            warn!("Resetting KBSR because KBDR was accessed last tick");
+            trace!("Resetting KBSR because KBDR was accessed last tick");
             state.memory()[OS_KBSR] = 0x0;
             return;
         }
