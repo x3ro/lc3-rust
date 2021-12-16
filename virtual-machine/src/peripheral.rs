@@ -113,7 +113,7 @@ impl Peripheral for TerminalKeyboard {
     fn run(&self, state: &mut dyn VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
-            warn!("Resetting KBSR because KBDR was accessed last tick");
+            trace!("Resetting KBSR because KBDR was accessed last tick");
             state.memory()[OS_KBSR] = 0x0;
             return;
         }
@@ -123,7 +123,7 @@ impl Peripheral for TerminalKeyboard {
             // Setting bit[15] on the KBSR indicates the a new character is ready
             state.memory()[OS_KBSR] = 0b1000_0000_0000_0000;
             state.memory()[OS_KBDR] = char as u16;
-            debug!("Wrote character '{:?}' into memory", char);
+            trace!("Wrote character '{:?}' into memory", char);
         }
     }
 }
@@ -167,7 +167,7 @@ impl Peripheral for AutomatedKeyboard {
                 // Setting bit[15] on the KBSR indicates the a new character is ready
                 state.memory()[OS_KBSR] = 0b1000_0000_0000_0000;
                 state.memory()[OS_KBDR] = char as u16;
-                warn!("Wrote character '{:?}' into memory", char);
+                trace!("Wrote character '{:?}' into memory", char);
             }
         }
     }
