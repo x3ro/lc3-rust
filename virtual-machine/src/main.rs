@@ -1,23 +1,20 @@
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
+use std::time::{Duration, Instant};
 
-use std::time::Duration;
-
-type Result<T> = std::result::Result<T, String>;
-
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-
+extern crate pretty_env_logger;
 #[macro_use]
 extern crate num_derive;
+extern crate anyhow;
+extern crate clap;
 extern crate num_traits;
 
-extern crate clap;
+use anyhow::Result;
 use clap::{App, Arg};
 
 #[macro_use]
@@ -34,13 +31,31 @@ use state::MyVmState;
 use state::Registers;
 use state::VmState;
 
+#[derive(Clone)]
 pub struct VmOptions<'a> {
     pub throttle: Option<Duration>,
     pub peripherals: Vec<&'a dyn Peripheral>,
-    pub debug_trap_enabled: bool,
+    pub entry_point: u16,
+    pub filenames: Vec<String>,
 }
 
-fn load_object_file(filename: &str, state: &mut dyn VmState) -> io::Result<()> {
+impl<'a> VmOptions<'a> {
+    pub fn with_entrypoint(&self, entry_point: u16) -> Self {
+        VmOptions {
+            entry_point,
+            ..self.clone()
+        }
+    }
+
+    pub fn with_filenames(&self, filenames: Vec<String>) -> Self {
+        VmOptions {
+            filenames,
+            ..self.clone()
+        }
+    }
+}
+
+fn load_object_file(filename: &str, state: &mut dyn VmState) -> Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
 
     let mut buffer: Vec<u8> = vec![];
@@ -67,6 +82,9 @@ fn load_object_file(filename: &str, state: &mut dyn VmState) -> io::Result<()> {
 }
 
 fn run(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
+    let mut ticks = 0;
+    let start = Instant::now();
+
     while state.running() {
         state.tick();
         execute_next_instruction(state)?;
@@ -78,30 +96,32 @@ fn run(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
         if opts.throttle.is_some() {
             thread::sleep(opts.throttle.unwrap());
         }
+
+        ticks += 1;
     }
+
+    let elapsed = start.elapsed();
+    info!(
+        "Ran {:?} instructions in {:?}ms ({:?} kHz)",
+        ticks,
+        elapsed.as_millis(),
+        (ticks as f64 / elapsed.as_secs_f64() / 1000.0) as u64
+    );
+
     Ok(())
 }
 
-fn run_file(
-    state: &mut dyn VmState,
-    filenames: Vec<&str>,
-    start_pc: u16,
-    opts: &VmOptions,
-) -> io::Result<()> {
-    for filename in filenames {
+fn load_files(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
+    state.registers()[Registers::PC] = opts.entry_point;
+
+    for filename in &opts.filenames {
         load_object_file(filename, state)?;
     }
 
-    state.registers()[Registers::PC] = start_pc;
-    match run(state, opts) {
-        Ok(x) => Ok(x),
-        Err(x) => Err(io::Error::new(io::ErrorKind::Other, x)),
-    }
+    Ok(())
 }
 
-fn main() -> io::Result<()> {
-    pretty_env_logger::init();
-
+fn parse_options<'a>() -> VmOptions<'a> {
     let matches = App::new("Rust LC3 simulator")
         .arg(
             Arg::with_name("programs")
@@ -126,32 +146,44 @@ fn main() -> io::Result<()> {
         )
         .get_matches();
 
-    let filenames: Vec<_> = matches.values_of("programs").unwrap().collect();
+    let filenames: Vec<String> = matches
+        .values_of("programs")
+        .unwrap()
+        .map(|s| s.into())
+        .collect();
+
     let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
+
     let throttle = matches
         .value_of("throttle")
         .and_then(|x| x.parse::<u64>().ok())
         .map(Duration::from_millis);
 
-    let e = u16::from_str_radix(entry_point.trim_start_matches("0x"), 16).unwrap();
+    let entry_point = u16::from_str_radix(entry_point.trim_start_matches("0x"), 16).unwrap();
+
+    VmOptions {
+        throttle,
+        peripherals: vec![],
+        filenames,
+        entry_point,
+    }
+}
+
+fn main() -> Result<()> {
+    pretty_env_logger::init();
+
+    let mut opts = parse_options();
 
     let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
     let mut state = MyVmState::new(rx);
 
     let display = TerminalDisplay {};
     let keyboard = TerminalKeyboard::new();
-    let opts = VmOptions {
-        throttle,
-        peripherals: vec![&display, &keyboard],
-        debug_trap_enabled: true,
-    };
+    opts.peripherals.push(&display);
+    opts.peripherals.push(&keyboard);
 
-    let res = match run_file(&mut state, filenames, e, &opts) {
-        Ok(_) => Ok(()),
-        Err(x) => Err(x),
-    };
-
-    res
+    load_files(&mut state, &opts)?;
+    run(&mut state, &opts)
 }
 
 #[cfg(test)]
@@ -227,7 +259,6 @@ mod tests {
     const DEFAULT_OPTS: VmOptions = VmOptions {
         throttle: None,
         peripherals: vec![],
-        debug_trap_enabled: true,
     };
 
     #[test]
@@ -606,7 +637,6 @@ mod tests {
             let opts = VmOptions {
                 throttle: None,
                 peripherals: vec![&display],
-                debug_trap_enabled: true,
             };
 
             let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();
@@ -632,7 +662,6 @@ mod tests {
             let opts = VmOptions {
                 throttle: None,
                 peripherals: vec![&display, &keyboard],
-                debug_trap_enabled: true,
             };
 
             let (_tx, rx): (Sender<u16>, Receiver<u16>) = mpsc::channel();

@@ -1,11 +1,12 @@
 // TODO: rename to decoder (in the fashion of FETCH -> DECODE -> ...)
+
+use anyhow::{anyhow, Result};
 use num_traits::FromPrimitive;
 
 use state::Registers;
 use util;
 
 use std::fmt;
-use std::result::Result;
 
 trait BitTools {
     fn has_bit(&self, index: u8) -> bool;
@@ -154,7 +155,7 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn from_raw(raw: u16) -> Result<Self, String> {
+    pub fn from_raw(raw: u16) -> Result<Self> {
         let opcode = Opcode::from_instruction(raw);
 
         match opcode {
@@ -173,7 +174,7 @@ impl Instruction {
             Opcode::STI => Ok(Self::from_sti(raw)),
             Opcode::STR => Ok(Self::from_str(raw)),
             Opcode::TRAP => Ok(Self::from_trap(raw)),
-            _ => Err(format!("Unrecognized opcode <0x{:x}>", opcode as u16)),
+            _ => Err(anyhow!("Unrecognized opcode <0x{:x}>", opcode as u16)),
         }
     }
 

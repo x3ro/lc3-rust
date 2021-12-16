@@ -1,3 +1,5 @@
+use anyhow::Result;
+
 use parser::Instruction;
 use state::ConditionFlags;
 use state::Registers;
@@ -19,7 +21,7 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
     debug!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
 }
 
-pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<(), String> {
+pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     let interrupt = state.interrupt_channel().try_recv().ok();
 
     // TODO: don't start an interrupt when inside an interrupt
