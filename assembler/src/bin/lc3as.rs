@@ -153,7 +153,10 @@ line
     #[test]
     fn test_lex_file() {
         // A section can be preceded by comments, or comments can come after
-        assert_rule!(Rule::file, "    ; some stuff\n;foo\n.ORIG x1234\nADD R0, R0, #1\n.END");
+        assert_rule!(
+            Rule::file,
+            "    ; some stuff\n;foo\n.ORIG x1234\nADD R0, R0, #1\n.END"
+        );
         assert_rule!(Rule::file, ".ORIG x1234\nADD R0, R0, #1\n.END\n;wat?!");
 
         let input = r###"
@@ -198,8 +201,5 @@ FOO
             .expect("Something went wrong reading the file");
 
         assert_rule!(Rule::file, contents.as_str());
-
-
-
     }
 }
