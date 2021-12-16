@@ -22,14 +22,6 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
 }
 
 pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
-    let interrupt = state.interrupt_channel().try_recv().ok();
-
-    // TODO: don't start an interrupt when inside an interrupt
-    if interrupt.is_some() {
-        handle_interrupt(state, interrupt.unwrap());
-        return Ok(());
-    }
-
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
@@ -213,7 +205,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     Ok(())
 }
 
-fn handle_interrupt(state: &mut dyn VmState, interrupt: u16) {
+fn _handle_interrupt(state: &mut dyn VmState, interrupt: u16) {
     // The processor sets the privilege mode to Supervisor mode (PSR[15] = 0)
     state.registers()[Registers::PSR] |= 0b1000_0000_0000_0000;
 

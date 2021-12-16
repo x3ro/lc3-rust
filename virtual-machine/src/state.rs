@@ -1,11 +1,10 @@
 use num_traits::FromPrimitive;
 use std::cell::RefCell;
 
-use std::io::{self, Write};
 use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
-use std::sync::mpsc::Receiver;
+
 use std::sync::{Arc, Mutex, MutexGuard};
 
 const MEM_SIZE: usize = 65535;
@@ -109,46 +108,25 @@ impl IndexMut<Registers> for VmRegisters {
     }
 }
 
-pub trait VmDisplay {
-    fn print(&mut self, _: u8);
-}
-
-pub struct DefaultVmDisplay {}
-
-impl VmDisplay for DefaultVmDisplay {
-    fn print(&mut self, c: u8) -> () {
-        print!("{}", c as char);
-        io::stdout().flush().unwrap();
-    }
-}
-
 pub trait VmState {
     fn tick(&mut self);
     fn running(&mut self) -> bool;
     fn memory(&self) -> MutexGuard<VmMemory>;
     fn registers(&mut self) -> &mut VmRegisters;
-    fn display(&mut self) -> &mut dyn VmDisplay;
     fn increment_pc(&mut self);
     fn resume(&mut self);
-    fn interrupt_channel(&mut self) -> &Receiver<u16>;
     fn memory_mutex(&self) -> Arc<Mutex<VmMemory>>;
 }
 
-pub struct MyVmState<'a> {
+pub struct MyVmState {
     pub memory: Arc<Mutex<VmMemory>>,
     pub registers: VmRegisters,
-    pub display: Box<dyn VmDisplay + 'a>,
     pub running: bool,
     pub error: Option<String>,
-    pub interrupt_channel: Receiver<u16>,
 }
 
-impl<'a> MyVmState<'a> {
-    pub fn new(interrupt_channel: Receiver<u16>) -> Self {
-        return MyVmState::new_with_display(Box::new(DefaultVmDisplay {}), interrupt_channel);
-    }
-
-    pub fn new_with_display(d: Box<dyn VmDisplay + 'a>, interrupt_channel: Receiver<u16>) -> Self {
+impl MyVmState {
+    pub fn new() -> Self {
         let mut x = Self {
             memory: Arc::new(Mutex::new(VmMemory {
                 memory: [0; MEM_SIZE],
@@ -158,9 +136,7 @@ impl<'a> MyVmState<'a> {
                 registers: [0; REGISTER_COUNT],
             },
             running: true,
-            display: d,
             error: None,
-            interrupt_channel: interrupt_channel,
         };
 
         // Highest bit of the machine control register MCR indicates
@@ -181,7 +157,7 @@ impl<'a> MyVmState<'a> {
     }
 }
 
-impl<'a> VmState for MyVmState<'a> {
+impl VmState for MyVmState {
     fn tick(&mut self) {
         self.memory().reset_accesses();
     }
@@ -198,10 +174,6 @@ impl<'a> VmState for MyVmState<'a> {
         &mut self.registers
     }
 
-    fn display(&mut self) -> &mut dyn VmDisplay {
-        &mut *self.display
-    }
-
     fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
     }
@@ -211,10 +183,6 @@ impl<'a> VmState for MyVmState<'a> {
     // VM would simply execute HALT again
     fn resume(&mut self) {
         self.memory()[0xFFFE] |= 0x8000
-    }
-
-    fn interrupt_channel(&mut self) -> &Receiver<u16> {
-        &self.interrupt_channel
     }
 
     fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
