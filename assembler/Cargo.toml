@@ -1,7 +1,7 @@
 [package]
-name = "lc3_assembler"
+name = "lc3as"
 version = "0.1.0"
-authors = ["Your Name <you@example.com>"]
+authors = ["Lucas Jenss <public@x3ro.de>"]
 
 [dependencies]
 pest = "2.0"

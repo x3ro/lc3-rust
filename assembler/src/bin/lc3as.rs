@@ -4,15 +4,11 @@ extern crate pest_derive;
 
 use std::error::Error;
 
-use pest::Parser;
-
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 pub struct Lc3Parser;
 
 pub fn main() -> Result<(), Box<dyn Error>> {
-    // let asd = FooParser::parse(Rule::field, "asd");
-    // println!("{:?}", asd);
     Ok(())
 }
 
@@ -200,6 +196,6 @@ FOO
         let contents = fs::read_to_string("../virtual-machine/tests/os.asm")
             .expect("Something went wrong reading the file");
 
-        assert_rule!(Rule::file, contents.as_str());
+        assert_rule!(Rule::file, contents.as_str());1
     }
 }

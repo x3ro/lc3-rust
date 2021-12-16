@@ -155,21 +155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hello_world"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "custom_debug",
- "lc3_assembler",
- "log",
- "num-derive",
- "num-traits",
- "pretty_env_logger",
- "termios",
-]
-
-[[package]]
 name = "humantime"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -179,11 +164,25 @@ dependencies = [
 ]
 
 [[package]]
-name = "lc3_assembler"
+name = "lc3as"
 version = "0.1.0"
 dependencies = [
  "pest",
  "pest_derive",
+]
+
+[[package]]
+name = "lc3vm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "custom_debug",
+ "log",
+ "num-derive",
+ "num-traits",
+ "pretty_env_logger",
+ "termios",
 ]
 
 [[package]]
