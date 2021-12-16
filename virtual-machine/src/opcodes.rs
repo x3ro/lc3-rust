@@ -46,10 +46,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
             let sr1_val = state.registers()[&sr1];
             let result = binary_add(sr1_val, imm5);
 
-            debug!(
-                "ADD {:?}, {:?} (= 0x{:x}), 0x{:x}",
-                dr, sr1, sr1_val, imm5
-            );
+            debug!("ADD {:?}, {:?} (= 0x{:x}), 0x{:x}", dr, sr1, sr1_val, imm5);
 
             state.registers()[dr] = result;
             update_condition_codes(state, result);

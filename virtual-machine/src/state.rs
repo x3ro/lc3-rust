@@ -193,7 +193,7 @@ impl VmState for MyVmState {
     fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
     }
-    
+
     fn resume(&mut self) {
         self.memory()[0xFFFE] |= 0x8000
     }
