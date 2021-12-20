@@ -1,7 +1,5 @@
-
-
-use anyhow::Result;
 use crate::debug::{fmt_instruction, fmt_psr};
+use anyhow::Result;
 
 use crate::parser::Instruction;
 use crate::state::ConditionFlags;
@@ -24,7 +22,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    debug!("{}", fmt_instruction(state, &instruction));
+    debug!("{}", fmt_instruction(state, &instruction)?);
 
     match &instruction {
         Instruction::AddRegister { dr, sr1, sr2 } => {

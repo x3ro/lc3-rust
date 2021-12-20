@@ -14,11 +14,11 @@ use anyhow::Result;
 
 #[macro_use]
 pub mod util;
+pub mod debug;
 pub mod opcodes;
 pub mod parser;
 pub mod peripheral;
 pub mod state;
-pub mod debug;
 
 use opcodes::*;
 
