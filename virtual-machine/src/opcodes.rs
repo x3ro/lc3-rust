@@ -7,7 +7,7 @@ use crate::state::Registers;
 use crate::state::VmState;
 use crate::util::binary_add;
 
-fn update_condition_codes(state: &mut dyn VmState, value: u16) {
+fn update_condition_codes(state: &mut VmState, value: u16) {
     state.registers()[Registers::PSR] &= 0b1111_1111_1111_1000;
     match value as i16 {
         x if x < 0 => state.registers()[Registers::PSR] |= ConditionFlags::Negative as u16,
@@ -18,7 +18,7 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
     trace!("{}", fmt_psr(state));
 }
 
-pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
+pub fn execute_next_instruction(state: &mut VmState) -> Result<()> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
@@ -203,7 +203,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     Ok(())
 }
 
-fn _handle_interrupt(state: &mut dyn VmState, interrupt: u16) {
+fn _handle_interrupt(state: &mut VmState, interrupt: u16) {
     // The processor sets the privilege mode to Supervisor mode (PSR[15] = 0)
     state.registers()[Registers::PSR] |= 0b1000_0000_0000_0000;
 

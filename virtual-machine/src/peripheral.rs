@@ -12,7 +12,7 @@ use self::termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 use crate::VmState;
 
 pub trait Peripheral {
-    fn run(&self, state: &mut dyn VmState);
+    fn run(&self, state: &mut VmState);
 }
 
 // Keyboard status and keyboard data register
@@ -31,7 +31,7 @@ const OS_DDR: u16 = 0xFE06;
 
 pub struct TerminalDisplay {}
 impl Peripheral for TerminalDisplay {
-    fn run(&self, state: &mut dyn VmState) {
+    fn run(&self, state: &mut VmState) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
@@ -54,7 +54,7 @@ pub struct CapturingDisplay {
 }
 
 impl Peripheral for CapturingDisplay {
-    fn run(&self, state: &mut dyn VmState) {
+    fn run(&self, state: &mut VmState) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
@@ -109,7 +109,7 @@ impl TerminalKeyboard {
 }
 
 impl Peripheral for TerminalKeyboard {
-    fn run(&self, state: &mut dyn VmState) {
+    fn run(&self, state: &mut VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
             trace!("Resetting KBSR because KBDR was accessed last tick");
@@ -142,7 +142,7 @@ impl AutomatedKeyboard {
 }
 
 impl Peripheral for AutomatedKeyboard {
-    fn run(&self, state: &mut dyn VmState) {
+    fn run(&self, state: &mut VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
         if kbdr_access {
             trace!("Resetting KBSR because KBDR was accessed last tick");

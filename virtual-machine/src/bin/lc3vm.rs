@@ -9,10 +9,10 @@ use clap::{App, Arg};
 
 use lc3vm::peripheral::{TerminalDisplay, TerminalKeyboard};
 
-use lc3vm::state::{MyVmState, Registers, VmState};
+use lc3vm::state::{Registers, VmState};
 use lc3vm::{run, VmOptions};
 
-fn load_files(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
+fn load_files(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     state.registers()[Registers::PC] = opts.entry_point;
 
     for filename in &opts.filenames {
@@ -22,7 +22,7 @@ fn load_files(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
     Ok(())
 }
 
-fn load_object_file(filename: &str, state: &mut dyn VmState) -> Result<()> {
+fn load_object_file(filename: &str, state: &mut VmState) -> Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
 
     let mut buffer: Vec<u8> = vec![];
@@ -100,7 +100,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
 
     let mut opts = parse_options();
-    let mut state = MyVmState::new();
+    let mut state = VmState::new();
 
     let display = TerminalDisplay {};
     let keyboard = TerminalKeyboard::new();

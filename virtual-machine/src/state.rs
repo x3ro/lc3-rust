@@ -124,24 +124,14 @@ impl IndexMut<Registers> for VmRegisters {
     }
 }
 
-pub trait VmState {
-    fn tick(&mut self);
-    fn running(&mut self) -> bool;
-    fn memory(&self) -> MutexGuard<VmMemory>;
-    fn registers(&mut self) -> &mut VmRegisters;
-    fn increment_pc(&mut self);
-    fn resume(&mut self);
-    fn memory_mutex(&self) -> Arc<Mutex<VmMemory>>;
-}
-
-pub struct MyVmState {
+pub struct VmState {
     pub memory: Arc<Mutex<VmMemory>>,
     pub registers: VmRegisters,
     pub running: bool,
     pub error: Option<String>,
 }
 
-impl MyVmState {
+impl VmState {
     pub fn new() -> Self {
         let mut x = Self {
             memory: Arc::new(Mutex::new(VmMemory {
@@ -173,32 +163,32 @@ impl MyVmState {
     }
 }
 
-impl VmState for MyVmState {
-    fn tick(&mut self) {
+impl VmState {
+    pub fn tick(&mut self) {
         self.memory().reset_accesses();
     }
 
-    fn running(&mut self) -> bool {
+    pub fn running(&mut self) -> bool {
         self.memory()[0xFFFE] > 0
     }
 
-    fn memory(&self) -> MutexGuard<VmMemory> {
+    pub fn memory(&self) -> MutexGuard<VmMemory> {
         self.memory.lock().unwrap()
     }
 
-    fn registers(&mut self) -> &mut VmRegisters {
+    pub fn registers(&mut self) -> &mut VmRegisters {
         &mut self.registers
     }
 
-    fn increment_pc(&mut self) {
+    pub fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
     }
 
-    fn resume(&mut self) {
+    pub fn resume(&mut self) {
         self.memory()[0xFFFE] |= 0x8000
     }
 
-    fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
+    pub fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
         let foo = &self.memory;
         Arc::clone(foo)
     }

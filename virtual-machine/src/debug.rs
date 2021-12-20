@@ -6,7 +6,7 @@ use crate::parser::Instruction;
 use crate::state::{ConditionFlags, Registers};
 use crate::VmState;
 
-fn fmt_register(s: &mut String, state: &mut dyn VmState, r: &Registers) -> Result<()> {
+fn fmt_register(s: &mut String, state: &mut VmState, r: &Registers) -> Result<()> {
     write!(s, "{:?} (=#{:?})", r, state.registers()[r] as i16)?;
     Ok(())
 }
@@ -16,7 +16,7 @@ fn fmt_immediate(s: &mut String, imm: &u16) -> Result<()> {
     Ok(())
 }
 
-pub fn fmt_psr(state: &mut dyn VmState) -> String {
+pub fn fmt_psr(state: &mut VmState) -> String {
     let psr = state.registers()[Registers::PSR];
     let n = psr & ConditionFlags::Negative as u16;
     let z = psr & ConditionFlags::Zero as u16;
@@ -27,7 +27,7 @@ pub fn fmt_psr(state: &mut dyn VmState) -> String {
     )
 }
 
-pub fn fmt_instruction(state: &mut dyn VmState, instruction: &Instruction) -> Result<String> {
+pub fn fmt_instruction(state: &mut VmState, instruction: &Instruction) -> Result<String> {
     let mut s = String::new();
 
     write!(s, "PC<0x{:X}> ", state.registers()[Registers::PC]).unwrap();

@@ -1,13 +1,13 @@
 use std::cell::RefCell;
 
 use lc3vm::peripheral::{AutomatedKeyboard, CapturingDisplay};
-use lc3vm::state::{ConditionFlags, MyVmState, Registers, VmState};
+use lc3vm::state::{ConditionFlags, Registers, VmState};
 use lc3vm::{load_object, run, VmOptions};
 
 // Utility functions
 
 #[inline]
-fn assert_cc_positive(state: &mut dyn VmState) {
+fn assert_cc_positive(state: &mut VmState) {
     assert_eq!(
         state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
         ConditionFlags::Positive as u16
@@ -23,7 +23,7 @@ fn assert_cc_positive(state: &mut dyn VmState) {
 }
 
 #[inline]
-fn assert_cc_zero(state: &mut dyn VmState) {
+fn assert_cc_zero(state: &mut VmState) {
     assert_eq!(
         state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
         0
@@ -39,7 +39,7 @@ fn assert_cc_zero(state: &mut dyn VmState) {
 }
 
 #[inline]
-fn assert_cc_negative(state: &mut dyn VmState) {
+fn assert_cc_negative(state: &mut VmState) {
     assert_eq!(
         state.registers()[Registers::PSR] & (ConditionFlags::Positive as u16),
         0
@@ -54,7 +54,7 @@ fn assert_cc_negative(state: &mut dyn VmState) {
     );
 }
 
-fn assert_supervisor_mode(state: &mut dyn VmState, enabled: bool) {
+fn assert_supervisor_mode(state: &mut VmState, enabled: bool) {
     if enabled {
         assert_eq!(
             state.registers()[Registers::PSR] & 0b1000_0000_0000_0000,
@@ -78,7 +78,7 @@ macro_rules! prepare_test {
     ($file:expr) => {{
         let _ = pretty_env_logger::try_init();
         let opts = DEFAULT_OPTS.with_filename($file);
-        let mut state = MyVmState::new();
+        let mut state = VmState::new();
         load_object(include_bytes!($file), &mut state).unwrap();
         (state, opts)
     }};
@@ -87,7 +87,7 @@ macro_rules! prepare_test {
         let opts = DEFAULT_OPTS
             .with_filename($file)
             .with_entrypoint($entrypoint);
-        let mut state = MyVmState::new();
+        let mut state = VmState::new();
         load_object(include_bytes!($file), &mut state).unwrap();
         (state, opts)
     }};

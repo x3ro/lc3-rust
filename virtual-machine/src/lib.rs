@@ -57,7 +57,7 @@ impl<'a> VmOptions<'a> {
     }
 }
 
-pub fn run(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
+pub fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     let mut ticks = 0;
     let start = Instant::now();
 
@@ -87,7 +87,7 @@ pub fn run(state: &mut dyn VmState, opts: &VmOptions) -> Result<()> {
     Ok(())
 }
 
-pub fn load_object(bytes: &[u8], state: &mut dyn VmState) -> Result<()> {
+pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<()> {
     // LC3 uses 16-bit words, so we need to combine two bytes into one word of memory
     let even = bytes.iter().step_by(2);
     let odd = bytes.iter().skip(1).step_by(2);
