@@ -1,6 +1,7 @@
-use std::fmt::Write;
+
 
 use anyhow::Result;
+use crate::debug::{fmt_instruction, fmt_psr};
 
 use crate::parser::Instruction;
 use crate::state::ConditionFlags;
@@ -16,56 +17,14 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
         _ => state.registers()[Registers::PSR] |= ConditionFlags::Zero as u16,
     }
 
-    let psr = state.registers()[Registers::PSR];
-    let n = psr & ConditionFlags::Negative as u16;
-    let z = psr & ConditionFlags::Zero as u16;
-    let p = psr & ConditionFlags::Positive as u16;
-    trace!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
-}
-
-pub fn trace_register(s: &mut String, state: &mut dyn VmState, r: &Registers) {
-    write!(s, "{:?} (=#{:?})", r, state.registers()[r] as i16);
-}
-
-pub fn trace_immediate(s: &mut String, imm: &u16) {
-    write!(s, "#{}", *imm as i16);
-}
-
-pub fn trace(state: &mut dyn VmState, instruction: &Instruction) -> String {
-    let mut s = String::new();
-
-    write!(s, "PC<0x{:X}> ", state.registers()[Registers::PC]).unwrap();
-
-    match instruction {
-        Instruction::AddRegister { dr, sr1, sr2 } => {
-            write!(s, "ADD ");
-            trace_register(&mut s, state, dr);
-            write!(s, ", ");
-            trace_register(&mut s, state, sr1);
-            write!(s, ", ");
-            trace_register(&mut s, state, sr2);
-        }
-
-        Instruction::AddImmediate { dr, sr1, imm5 } => {
-            write!(s, "ADD ");
-            trace_register(&mut s, state, dr);
-            write!(s, ", ");
-            trace_register(&mut s, state, sr1);
-            write!(s, ", ");
-            trace_immediate(&mut s, imm5);
-        }
-
-        _ => write!(s, "{:?}", instruction).unwrap(),
-    };
-
-    s
+    trace!("{}", fmt_psr(state));
 }
 
 pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    debug!("{}", trace(state, &instruction));
+    debug!("{}", fmt_instruction(state, &instruction));
 
     match &instruction {
         Instruction::AddRegister { dr, sr1, sr2 } => {
