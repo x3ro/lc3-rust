@@ -6,3 +6,4 @@ target/
 *.lst
 *.vconst
 .idea
+flamegraph.svg
