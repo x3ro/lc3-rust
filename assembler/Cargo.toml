@@ -2,11 +2,20 @@
 name = "lc3as"
 version = "0.1.0"
 authors = ["Lucas Jenss <public@x3ro.de>"]
+edition = "2021"
 
 [dependencies]
 pest = "2.0"
 pest_derive = "2.0"
+wasm-bindgen = "0.2"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+pretty_assertions = "1.0.0"
 
 [lib]
-name = "lc3_assembler"
+crate-type = ["cdylib", "rlib"]
 path = "src/lib.rs"
