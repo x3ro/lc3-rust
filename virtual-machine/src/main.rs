@@ -288,7 +288,7 @@ mod tests {
 
     #[test]
     fn test_br() {
-        let (mut state, opts) = prepare_test!("tests/br.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/br.obj");
         let result = run(&mut state, &opts);
 
         assert!(result.is_ok());
@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn test_lea() {
-        let (mut state, opts) = prepare_test!("tests/lea.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/lea.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok());
         assert_eq!(state.registers()[Registers::R0], 0x3002);
@@ -352,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_add_immediate() {
-        let (mut state, opts) = prepare_test!("tests/add_immediate.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/add_immediate.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok());
 
@@ -372,7 +372,7 @@ mod tests {
 
     #[test]
     fn test_add_register() {
-        let (mut state, opts) = prepare_test!("tests/add_register.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/add_register.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok());
 
@@ -392,7 +392,7 @@ mod tests {
 
     #[test]
     fn test_ld() {
-        let (mut state, opts) = prepare_test!("tests/ld.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/ld.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok());
 
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn test_jmp() {
-        let (mut state, opts) = prepare_test!("tests/jmp.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/jmp.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn test_jsr_immediate() {
-        let (mut state, opts) = prepare_test!("tests/jsr_immediate.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/jsr_immediate.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -433,7 +433,7 @@ mod tests {
 
     #[test]
     fn test_jsr_register() {
-        let (mut state, opts) = prepare_test!("tests/jsr_register.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/jsr_register.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -446,7 +446,7 @@ mod tests {
 
     #[test]
     fn test_ldi() {
-        let (mut state, opts) = prepare_test!("tests/ldi.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/ldi.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn test_ldr() {
-        let (mut state, opts) = prepare_test!("tests/ldr.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/ldr.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -467,7 +467,7 @@ mod tests {
 
     #[test]
     fn test_and() {
-        let (mut state, opts) = prepare_test!("tests/and.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/and.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -487,7 +487,7 @@ mod tests {
 
     #[test]
     fn test_not() {
-        let (mut state, opts) = prepare_test!("tests/not.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/not.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_st() {
-        let (mut state, opts) = prepare_test!("tests/st.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/st.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -506,7 +506,7 @@ mod tests {
 
     #[test]
     fn test_sti() {
-        let (mut state, opts) = prepare_test!("tests/sti.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/sti.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     fn test_str() {
-        let (mut state, opts) = prepare_test!("tests/str.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/str.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_trap() {
-        let (mut state, opts) = prepare_test!("tests/trap.obj", 0x200);
+        let (mut state, opts) = prepare_test!("testcases/simple/trap.obj", 0x200);
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -533,7 +533,7 @@ mod tests {
 
     #[test]
     fn test_br_backwards() {
-        let (mut state, opts) = prepare_test!("tests/br_backwards.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/br_backwards.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -543,7 +543,7 @@ mod tests {
     #[test]
     #[ignore] // Interrupts do not currently work
     fn test_rti() {
-        let (mut state, opts) = prepare_test!("tests/rti.obj");
+        let (mut state, opts) = prepare_test!("testcases/simple/rti.obj");
         let result = run(&mut state, &opts);
         assert!(result.is_ok(), "{}", result.unwrap_err());
 
@@ -587,7 +587,7 @@ mod tests {
         };
 
         {
-            let (mut state, mut opts) = prepare_test!("tests/puts.obj", 0x100);
+            let (mut state, mut opts) = prepare_test!("testcases/simple/puts.obj", 0x100);
             opts.peripherals.push(&display);
             let result = run(&mut state, &opts);
             assert!(result.is_ok());
@@ -605,7 +605,7 @@ mod tests {
         let keyboard = AutomatedKeyboard::new("merp".into());
 
         {
-            let (mut state, mut opts) = prepare_test!("tests/os.obj", 0x200);
+            let (mut state, mut opts) = prepare_test!("testcases/complex/os.obj", 0x200);
             opts.peripherals.push(&display);
             opts.peripherals.push(&keyboard);
             let result = run(&mut state, &opts);

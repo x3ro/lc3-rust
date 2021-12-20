@@ -41,7 +41,12 @@ function cmd_test {
 
 function cmd_os {
   cmd_assemble_tests
-  cargo run -- --program tests/os.obj --entry-point 0x200
+  cargo run -- --program testcases/complex/os.obj --entry-point 0x200
+}
+
+function cmd_bench {
+  cmd_assemble_tests
+  cargo run -- --program testcases/complex/divisible.obj --entry-point 0x3000
 }
 
 function cmd_usage {
@@ -67,6 +72,7 @@ fi
 case "${command}" in
     test) cmd_test "$@" ;;
     assemble-tests) cmd_assemble_tests "$@" ;;
+    bench) cmd_bench ;;
     os)  cmd_os "$@" ;;
     *) cmd_usage
 esac
