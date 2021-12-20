@@ -43,7 +43,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<()> {
     debug!("Loaded <{}> at <0x{:x}>", filename, orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
-    state.memory()[memory_area].copy_from_slice(program);
+    state.memory_mut()[memory_area].copy_from_slice(program);
 
     Ok(())
 }

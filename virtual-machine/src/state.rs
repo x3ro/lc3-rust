@@ -5,8 +5,6 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
 
-use std::sync::{Arc, Mutex, MutexGuard};
-
 const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
 
@@ -125,7 +123,7 @@ impl IndexMut<Registers> for VmRegisters {
 }
 
 pub struct VmState {
-    pub memory: Arc<Mutex<VmMemory>>,
+    pub memory: VmMemory,
     pub registers: VmRegisters,
     pub running: bool,
     pub error: Option<String>,
@@ -134,10 +132,10 @@ pub struct VmState {
 impl VmState {
     pub fn new() -> Self {
         let mut x = Self {
-            memory: Arc::new(Mutex::new(VmMemory {
+            memory: VmMemory {
                 memory: [0; MEM_SIZE],
                 accesses: RefCell::new(vec![]),
-            })),
+            },
             registers: VmRegisters {
                 registers: [0; REGISTER_COUNT],
             },
@@ -147,7 +145,7 @@ impl VmState {
 
         // Highest bit of the machine control register MCR indicates
         // whether or not we're running.
-        x.memory()[0xFFFE] = 0x8000;
+        x.memory_mut()[0xFFFE] = 0x8000;
 
         // The supervisor stack starts at the high-end of the operating
         // system memory segment. This is, as far as I can see, not
@@ -164,16 +162,20 @@ impl VmState {
 }
 
 impl VmState {
-    pub fn tick(&mut self) {
-        self.memory().reset_accesses();
+    pub fn tick(&self) {
+        self.memory.reset_accesses();
     }
 
-    pub fn running(&mut self) -> bool {
-        self.memory()[0xFFFE] > 0
+    pub fn running(&self) -> bool {
+        self.memory[0xFFFE] > 0
     }
 
-    pub fn memory(&self) -> MutexGuard<VmMemory> {
-        self.memory.lock().unwrap()
+    pub fn memory_mut(&mut self) -> &mut VmMemory {
+        &mut self.memory
+    }
+
+    pub fn memory(&self) -> &VmMemory {
+        &self.memory
     }
 
     pub fn registers(&mut self) -> &mut VmRegisters {
@@ -185,11 +187,6 @@ impl VmState {
     }
 
     pub fn resume(&mut self) {
-        self.memory()[0xFFFE] |= 0x8000
-    }
-
-    pub fn memory_mutex(&self) -> Arc<Mutex<VmMemory>> {
-        let foo = &self.memory;
-        Arc::clone(foo)
+        self.memory[0xFFFE] |= 0x8000
     }
 }

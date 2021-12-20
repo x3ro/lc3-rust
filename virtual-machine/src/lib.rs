@@ -103,7 +103,7 @@ pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<()> {
     debug!("Loaded an object at <0x{:x}>", orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
-    state.memory()[memory_area].copy_from_slice(program);
+    state.memory_mut()[memory_area].copy_from_slice(program);
 
     Ok(())
 }
