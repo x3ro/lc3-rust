@@ -48,7 +48,7 @@ function cmd_bench {
   cmd_assemble_tests
   cargo build --release
 
-  export RUST_LOG=info
+  export RUST_LOG=${RUST_LOG:-info}
   if [[ "$1" == "flamegraph" ]]; then
     sudo flamegraph ../target/release/lc3vm --program testcases/complex/divisible.obj --entry-point 0x3000
   else
