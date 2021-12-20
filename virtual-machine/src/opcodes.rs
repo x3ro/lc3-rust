@@ -1,5 +1,7 @@
 use anyhow::Result;
 
+use std::fmt::Write;
+
 use parser::Instruction;
 use state::ConditionFlags;
 use state::Registers;
@@ -21,32 +23,64 @@ fn update_condition_codes(state: &mut dyn VmState, value: u16) {
     trace!("    -> Updated PSR n = {:?} z = {:?} p = {:?}", n, z, p);
 }
 
+pub fn trace_register(s: &mut String, state: &mut dyn VmState, r: &Registers) {
+    write!(s, "{:?} (=#{:?})", r, state.registers()[r] as i16);
+}
+
+pub fn trace_immediate(s: &mut String, imm: &u16) {
+    write!(s, "#{}", *imm as i16);
+}
+
+pub fn trace(state: &mut dyn VmState, instruction: &Instruction) -> String {
+    let mut s = String::new();
+
+    write!(s, "PC<0x{:X}> ", state.registers()[Registers::PC]).unwrap();
+
+    match instruction {
+        Instruction::AddRegister { dr, sr1, sr2 } => {
+            write!(s, "ADD ");
+            trace_register(&mut s, state, dr);
+            write!(s, ", ");
+            trace_register(&mut s, state, sr1);
+            write!(s, ", ");
+            trace_register(&mut s, state, sr2);
+        }
+
+        Instruction::AddImmediate { dr, sr1, imm5 } => {
+            write!(s, "ADD ");
+            trace_register(&mut s, state, dr);
+            write!(s, ", ");
+            trace_register(&mut s, state, sr1);
+            write!(s, ", ");
+            trace_immediate(&mut s, imm5);
+        }
+
+        _ => write!(s, "{:?}", instruction).unwrap()
+    };
+
+    s
+
+}
+
 pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
     let pc = state.registers()[Registers::PC];
     let instruction = Instruction::from_raw(state.memory()[pc as u16])?;
 
-    trace!("PC<0x{:X}> {:?}", pc, instruction);
+    debug!("{}", trace(state, &instruction));
 
-    match instruction {
+    match &instruction {
         Instruction::AddRegister { dr, sr1, sr2 } => {
-            let sr1_val = state.registers()[&sr1];
-            let sr2_val = state.registers()[&sr2];
+            let sr1_val = state.registers()[sr1];
+            let sr2_val = state.registers()[sr2];
             let result = binary_add(sr1_val, sr2_val);
-
-            debug!(
-                "ADD {:?}, {:?} (= 0x{:x}), {:?} (= 0x{:x})",
-                dr, sr1, sr1_val, sr2, sr2_val
-            );
 
             state.registers()[dr] = result;
             update_condition_codes(state, result);
         }
 
         Instruction::AddImmediate { dr, sr1, imm5 } => {
-            let sr1_val = state.registers()[&sr1];
-            let result = binary_add(sr1_val, imm5);
-
-            debug!("ADD {:?}, {:?} (= 0x{:x}), 0x{:x}", dr, sr1, sr1_val, imm5);
+            let sr1_val = state.registers()[sr1];
+            let result = binary_add(sr1_val, *imm5);
 
             state.registers()[dr] = result;
             update_condition_codes(state, result);
@@ -56,6 +90,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
             let sr1_val = state.registers()[sr1];
             let sr2_val = state.registers()[sr2];
             let result = sr1_val & sr2_val;
+
             state.registers()[dr] = result;
             update_condition_codes(state, result);
         }
@@ -63,6 +98,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
         Instruction::AndImmediate { dr, sr1, imm5 } => {
             let sr1_val = state.registers()[sr1];
             let result = sr1_val & imm5;
+
             state.registers()[dr] = result;
             update_condition_codes(state, result);
         }
@@ -80,15 +116,16 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
                 (state.registers()[Registers::PSR] & ConditionFlags::Positive as u16) > 0;
 
             // If n, z, and p are set we want to unconditionally branch
-            if (n && z && p) || (n && mem_n) || (z && mem_z) || (p && mem_p) {
+            if (*n && *z && *p) || (*n && mem_n) || (*z && mem_z) || (*p && mem_p) {
                 let pc = state.registers()[Registers::PC];
-                state.registers()[Registers::PC] = binary_add(pc, pc_offset9);
+                state.registers()[Registers::PC] = binary_add(pc, *pc_offset9);
             }
         }
 
         Instruction::Jmp { base_r } => {
             // -1 because we increment the PC at the end of execute_next_instruction
             state.registers()[Registers::PC] = state.registers()[base_r] - 1;
+
         }
 
         Instruction::JsrImmediate { pc_offset11 } => {
@@ -102,21 +139,17 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
         }
 
         Instruction::Ld { dr, offset9 } => {
-            let address = binary_add(pc + 1, offset9);
+            let address = binary_add(pc + 1, *offset9);
             let value = state.memory()[address];
+
             state.registers()[dr] = value;
             update_condition_codes(state, value);
         }
 
         Instruction::Ldi { dr, offset9 } => {
-            let address1 = binary_add(pc + 1, offset9);
+            let address1 = binary_add(pc + 1, *offset9);
             let address2 = state.memory()[address1];
             let result = state.memory()[address2];
-
-            debug!(
-                "LDI {:?}, mem[0x{:x}] (value = 0x{:x})",
-                dr, address2, result
-            );
 
             state.registers()[dr] = result;
             update_condition_codes(state, result);
@@ -128,14 +161,15 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
             offset6,
         } => {
             let address1 = state.registers()[base_r];
-            let address2 = binary_add(address1, offset6);
+            let address2 = binary_add(address1, *offset6);
             let value = state.memory()[address2];
+
             state.registers()[dr] = value;
             update_condition_codes(state, value);
         }
 
         Instruction::Lea { dr, offset9 } => {
-            let address = binary_add(pc + 1, offset9);
+            let address = binary_add(pc + 1, *offset9);
             state.registers()[dr] = address;
             update_condition_codes(state, address);
         }
@@ -164,13 +198,13 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
         }
 
         Instruction::St { sr, pc_offset9 } => {
-            let addr = binary_add(pc + 1, pc_offset9);
+            let addr = binary_add(pc + 1, *pc_offset9);
             let value = state.registers()[sr];
             state.memory()[addr] = value;
         }
 
         Instruction::Sti { sr, pc_offset9 } => {
-            let addr1 = binary_add(pc + 1, pc_offset9);
+            let addr1 = binary_add(pc + 1, *pc_offset9);
             let addr2 = state.memory()[addr1];
             let value = state.registers()[sr];
             state.memory()[addr2] = value;
@@ -182,7 +216,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
             offset6,
         } => {
             let base_addr = state.registers()[base_r];
-            let addr = binary_add(base_addr, offset6);
+            let addr = binary_add(base_addr, *offset6);
             let value = state.registers()[sr];
             state.memory()[addr] = value;
         }
@@ -203,7 +237,7 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
                     let pc = state.registers()[Registers::PC];
                     state.registers()[Registers::R7] = pc + 1;
                     // -1 because we increment the PC at the end of execute_next_instruction
-                    let new_pc = state.memory()[trapvect8] - 1;
+                    let new_pc = state.memory()[*trapvect8] - 1;
                     state.registers()[Registers::PC] = new_pc;
                 }
             }
