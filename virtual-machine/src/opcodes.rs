@@ -1,12 +1,12 @@
-use anyhow::Result;
-
 use std::fmt::Write;
 
-use parser::Instruction;
-use state::ConditionFlags;
-use state::Registers;
-use state::VmState;
-use util::binary_add;
+use anyhow::Result;
+
+use crate::parser::Instruction;
+use crate::state::ConditionFlags;
+use crate::state::Registers;
+use crate::state::VmState;
+use crate::util::binary_add;
 
 fn update_condition_codes(state: &mut dyn VmState, value: u16) {
     state.registers()[Registers::PSR] &= 0b1111_1111_1111_1000;
@@ -55,11 +55,10 @@ pub fn trace(state: &mut dyn VmState, instruction: &Instruction) -> String {
             trace_immediate(&mut s, imm5);
         }
 
-        _ => write!(s, "{:?}", instruction).unwrap()
+        _ => write!(s, "{:?}", instruction).unwrap(),
     };
 
     s
-
 }
 
 pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
@@ -125,7 +124,6 @@ pub fn execute_next_instruction(state: &mut dyn VmState) -> Result<()> {
         Instruction::Jmp { base_r } => {
             // -1 because we increment the PC at the end of execute_next_instruction
             state.registers()[Registers::PC] = state.registers()[base_r] - 1;
-
         }
 
         Instruction::JsrImmediate { pc_offset11 } => {

@@ -3,10 +3,10 @@
 use anyhow::{anyhow, Result};
 use num_traits::FromPrimitive;
 
-use state::Registers;
-use util;
-
 use std::fmt;
+
+use crate::state::Registers;
+use crate::util;
 
 trait BitTools {
     fn has_bit(&self, index: u8) -> bool;

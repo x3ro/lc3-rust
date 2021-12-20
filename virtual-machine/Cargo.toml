@@ -2,6 +2,7 @@
 name = "lc3vm"
 version = "0.1.0"
 authors = ["Lucas Jenss <public@x3ro.de>"]
+edition = "2021"
 
 [dependencies]
 num-traits = "0.2"

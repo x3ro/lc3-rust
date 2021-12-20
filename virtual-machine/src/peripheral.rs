@@ -9,7 +9,7 @@ use std::thread;
 extern crate termios;
 use self::termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 
-use VmState;
+use crate::VmState;
 
 pub trait Peripheral {
     fn run(&self, state: &mut dyn VmState);
@@ -23,7 +23,6 @@ const OS_KBDR: u16 = 0xFE02;
 // In order to give the VM application time to process keyboard input, we have to wait
 // a couple of instructions until we write the next character into memory. This constant
 // indicates how many instructions we wait.
-#[cfg(test)]
 const KEYBOARD_UPDATE_SPEED: u8 = 20;
 
 // Display status and display data register
@@ -128,13 +127,11 @@ impl Peripheral for TerminalKeyboard {
     }
 }
 
-#[cfg(test)]
 pub struct AutomatedKeyboard {
     output: RefCell<String>,
     counter: RefCell<u8>,
 }
 
-#[cfg(test)]
 impl AutomatedKeyboard {
     pub fn new(output: String) -> Self {
         AutomatedKeyboard {
@@ -144,7 +141,6 @@ impl AutomatedKeyboard {
     }
 }
 
-#[cfg(test)]
 impl Peripheral for AutomatedKeyboard {
     fn run(&self, state: &mut dyn VmState) {
         let kbdr_access = state.memory().was_accessed(OS_KBDR);
