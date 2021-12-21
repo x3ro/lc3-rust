@@ -2,25 +2,13 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::time::Duration;
 
-#[macro_use]
-extern crate log;
 use anyhow::Result;
 use clap::{App, Arg};
 
 use lc3vm::peripheral::{TerminalDisplay, TerminalKeyboard};
 
 use lc3vm::state::{Registers, VmState};
-use lc3vm::{run, VmOptions};
-
-fn load_files(state: &mut VmState, opts: &VmOptions) -> Result<()> {
-    state.registers()[Registers::PC] = opts.entry_point;
-
-    for filename in &opts.filenames {
-        load_object_file(filename, state)?;
-    }
-
-    Ok(())
-}
+use lc3vm::{load_object, run, VmOptions};
 
 fn load_object_file(filename: &str, state: &mut VmState) -> Result<()> {
     let mut f = File::open(filename).expect(&format!("File <{}> not found", filename));
@@ -28,24 +16,7 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<()> {
     let mut buffer: Vec<u8> = vec![];
     f.read_to_end(&mut buffer)?;
 
-    // LC3 uses 16-bit words, so we need to combine two bytes into one word of memory
-    let even = buffer.iter().step_by(2);
-    let odd = buffer.iter().skip(1).step_by(2);
-    let zipped = even.zip(odd);
-
-    let data: Vec<u16> = zipped
-        .map(|(&high, &low)| (high as u16) << 8 | low as u16)
-        .collect();
-
-    // The first two bytes of the object file indicate where to load the program
-    let orig = data[0];
-    let program = &data[1..];
-    debug!("Loaded <{}> at <0x{:x}>", filename, orig);
-
-    let memory_area = (orig as usize)..((orig as usize) + program.len());
-    state.memory_mut()[memory_area].copy_from_slice(program);
-
-    Ok(())
+    load_object(buffer.as_slice(), state)
 }
 
 fn parse_options<'a>() -> VmOptions<'a> {
@@ -107,6 +78,10 @@ fn main() -> Result<()> {
     opts.peripherals.push(&display);
     opts.peripherals.push(&keyboard);
 
-    load_files(&mut state, &opts)?;
+    state.registers()[Registers::PC] = opts.entry_point;
+    for filename in &opts.filenames {
+        load_object_file(filename, &mut state)?;
+    }
+
     run(&mut state, &opts)
 }
