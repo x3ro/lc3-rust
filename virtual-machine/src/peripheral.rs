@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::{self, Write};
 
+use crate::state::VmMemory;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
@@ -9,10 +10,8 @@ use std::thread;
 extern crate termios;
 use self::termios::{tcsetattr, Termios, ECHO, ICANON, TCSANOW};
 
-use crate::VmState;
-
 pub trait Peripheral {
-    fn run(&self, state: &mut VmState);
+    fn run(&self, memory: &mut VmMemory);
 }
 
 // Keyboard status and keyboard data register
@@ -31,13 +30,13 @@ const OS_DDR: u16 = 0xFE06;
 
 pub struct TerminalDisplay {}
 impl Peripheral for TerminalDisplay {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, memory: &mut VmMemory) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
-        state.memory_mut()[OS_DSR] = 0b1000_0000_0000_0000;
+        memory[OS_DSR] = 0b1000_0000_0000_0000;
 
-        let character = (state.memory_mut()[OS_DDR] & 0xFF) as u8;
+        let character = (memory[OS_DDR] & 0xFF) as u8;
         if character == 0 {
             return;
         }
@@ -45,7 +44,7 @@ impl Peripheral for TerminalDisplay {
         print!("{}", character as char);
         io::stdout().flush().unwrap();
 
-        state.memory_mut()[OS_DDR] = 0;
+        memory[OS_DDR] = 0;
     }
 }
 
@@ -54,19 +53,19 @@ pub struct CapturingDisplay {
 }
 
 impl Peripheral for CapturingDisplay {
-    fn run(&self, state: &mut VmState) {
+    fn run(&self, memory: &mut VmMemory) {
         // Setting bit[15] on the DSR indicates the display is ready
         // We can always set this, since we're running in sync with the VM
         // (that is, before a new VM instruction we're always done printing)
-        state.memory_mut()[OS_DSR] = 0b1000_0000_0000_0000;
+        memory[OS_DSR] = 0b1000_0000_0000_0000;
 
-        let character = (state.memory_mut()[OS_DDR] & 0xFF) as u8;
+        let character = (memory[OS_DDR] & 0xFF) as u8;
         if character == 0 {
             return;
         }
 
         self.output.borrow_mut().push(character as char);
-        state.memory_mut()[OS_DDR] = 0;
+        memory[OS_DDR] = 0;
     }
 }
 
@@ -109,19 +108,19 @@ impl TerminalKeyboard {
 }
 
 impl Peripheral for TerminalKeyboard {
-    fn run(&self, state: &mut VmState) {
-        let kbdr_access = state.memory_mut().was_accessed(OS_KBDR);
+    fn run(&self, memory: &mut VmMemory) {
+        let kbdr_access = memory.was_accessed(OS_KBDR);
         if kbdr_access {
             trace!("Resetting KBSR because KBDR was accessed last tick");
-            state.memory_mut()[OS_KBSR] = 0x0;
+            memory[OS_KBSR] = 0x0;
             return;
         }
 
         let data = self.rx.try_recv().ok();
         if let Some(char) = data {
             // Setting bit[15] on the KBSR indicates the a new character is ready
-            state.memory_mut()[OS_KBSR] = 0b1000_0000_0000_0000;
-            state.memory_mut()[OS_KBDR] = char as u16;
+            memory[OS_KBSR] = 0b1000_0000_0000_0000;
+            memory[OS_KBDR] = char as u16;
             trace!("Wrote character '{:?}' into memory", char);
         }
     }
@@ -142,11 +141,11 @@ impl AutomatedKeyboard {
 }
 
 impl Peripheral for AutomatedKeyboard {
-    fn run(&self, state: &mut VmState) {
-        let kbdr_access = state.memory_mut().was_accessed(OS_KBDR);
+    fn run(&self, memory: &mut VmMemory) {
+        let kbdr_access = memory.was_accessed(OS_KBDR);
         if kbdr_access {
             trace!("Resetting KBSR because KBDR was accessed last tick");
-            state.memory_mut()[OS_KBSR] = 0x0;
+            memory[OS_KBSR] = 0x0;
             return;
         }
 
@@ -157,12 +156,12 @@ impl Peripheral for AutomatedKeyboard {
         }
         *counter = KEYBOARD_UPDATE_SPEED;
 
-        let kbsr_access = state.memory_mut().was_accessed(OS_KBSR);
+        let kbsr_access = memory.was_accessed(OS_KBSR);
         if kbsr_access {
             if let Some(char) = self.output.borrow_mut().pop() {
                 // Setting bit[15] on the KBSR indicates the a new character is ready
-                state.memory_mut()[OS_KBSR] = 0b1000_0000_0000_0000;
-                state.memory_mut()[OS_KBDR] = char as u16;
+                memory[OS_KBSR] = 0b1000_0000_0000_0000;
+                memory[OS_KBDR] = char as u16;
                 trace!("Wrote character '{:?}' into memory", char);
             }
         }

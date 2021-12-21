@@ -1,6 +1,7 @@
 use num_traits::FromPrimitive;
 use std::cell::RefCell;
 
+use crate::Peripheral;
 use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
@@ -122,14 +123,15 @@ impl IndexMut<Registers> for VmRegisters {
     }
 }
 
-pub struct VmState {
+pub struct VmState<'a> {
     pub memory: VmMemory,
     pub registers: VmRegisters,
     pub running: bool,
     pub error: Option<String>,
+    pub peripherals: Vec<&'a dyn Peripheral>,
 }
 
-impl VmState {
+impl<'a> VmState<'a> {
     pub fn new() -> Self {
         let mut x = Self {
             memory: VmMemory {
@@ -141,6 +143,7 @@ impl VmState {
             },
             running: true,
             error: None,
+            peripherals: vec![],
         };
 
         // Highest bit of the machine control register MCR indicates
@@ -161,7 +164,7 @@ impl VmState {
     }
 }
 
-impl VmState {
+impl<'a> VmState<'a> {
     pub fn tick(&self) {
         self.memory.reset_accesses();
     }
@@ -184,6 +187,10 @@ impl VmState {
 
     pub fn increment_pc(&mut self) {
         self.registers()[Registers::PC] += 1;
+    }
+
+    pub fn set_pc(&mut self, pc: u16) {
+        self.registers()[Registers::PC] = pc;
     }
 
     pub fn resume(&mut self) {

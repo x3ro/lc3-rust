@@ -1,15 +1,9 @@
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 #[macro_use]
 extern crate log;
-// extern crate pretty_env_logger;
 #[macro_use]
 extern crate num_derive;
-// extern crate anyhow;
-// extern crate clap;
-// extern crate num_traits;
-
 use anyhow::Result;
 
 #[macro_use]
@@ -21,63 +15,27 @@ pub mod peripheral;
 pub mod state;
 
 use opcodes::*;
-
 use peripheral::Peripheral;
-
 use state::VmState;
 
-#[derive(Clone)]
-pub struct VmOptions<'a> {
-    pub throttle: Option<Duration>,
-    pub peripherals: Vec<&'a dyn Peripheral>,
-    pub entry_point: u16,
-    pub filenames: Vec<String>,
-}
-
-impl<'a> VmOptions<'a> {
-    pub fn with_entrypoint(&self, entry_point: u16) -> Self {
-        VmOptions {
-            entry_point,
-            ..self.clone()
-        }
-    }
-
-    pub fn with_filenames(&self, filenames: Vec<String>) -> Self {
-        VmOptions {
-            filenames,
-            ..self.clone()
-        }
-    }
-
-    pub fn with_filename(&self, filename: &str) -> Self {
-        VmOptions {
-            filenames: vec![filename.into()],
-            ..self.clone()
-        }
-    }
-}
-
-pub fn tick(state: &mut VmState, opts: &VmOptions) -> Result<()> {
+pub fn tick(state: &mut VmState) -> Result<()> {
     state.tick();
     execute_next_instruction(state)?;
 
-    for p in &opts.peripherals {
-        p.run(state);
-    }
-
-    if opts.throttle.is_some() {
-        thread::sleep(opts.throttle.unwrap());
+    let memory = &mut state.memory;
+    for p in &state.peripherals {
+        p.run(memory);
     }
 
     Ok(())
 }
 
-pub fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
+pub fn run(state: &mut VmState) -> Result<()> {
     let mut ticks = 0;
     let start = Instant::now();
 
     while state.running() {
-        tick(state, opts)?;
+        tick(state)?;
         ticks += 1;
     }
 

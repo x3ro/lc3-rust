@@ -1,6 +1,6 @@
-use std::fs::{read, File};
+use std::fs::File;
 use std::io::prelude::*;
-use std::io::{self, Write};
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,10 +11,10 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use termion::{color, style};
 
-use lc3vm::peripheral::{TerminalDisplay, TerminalKeyboard};
+use lc3vm::peripheral::{Peripheral, TerminalDisplay};
 
+use lc3vm::load_object;
 use lc3vm::state::{Registers, VmState};
-use lc3vm::{load_object, run, tick, VmOptions};
 
 fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     let mut f = File::open(filename)?;
@@ -25,7 +25,19 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     load_object(buffer.as_slice(), state)
 }
 
-fn parse_options<'a>() -> VmOptions<'a> {
+struct ReplState<'a> {
+    throttle: Option<Duration>,
+    pause_after_tick: Arc<AtomicBool>,
+    peripherals: Vec<&'a dyn Peripheral>,
+}
+
+struct ReplParameters {
+    throttle: Option<Duration>,
+    programs: Vec<String>,
+    entrypoint: u16,
+}
+
+fn parse_cli_parameters() -> ReplParameters {
     let matches = App::new("Rust LC3 simulator")
         .arg(
             Arg::with_name("programs")
@@ -37,9 +49,9 @@ fn parse_options<'a>() -> VmOptions<'a> {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("entry_point")
+            Arg::with_name("entrypoint")
                 .short("e")
-                .long("entry-point")
+                .long("entrypoint")
                 .takes_value(true),
         )
         .arg(
@@ -50,26 +62,24 @@ fn parse_options<'a>() -> VmOptions<'a> {
         )
         .get_matches();
 
-    let filenames: Vec<String> = matches
+    let programs: Vec<String> = matches
         .values_of("programs")
         .unwrap()
         .map(|s| s.into())
         .collect();
 
-    let entry_point = matches.value_of("entry_point").unwrap_or("0x3000");
+    let entrypoint = matches.value_of("entrypoint").unwrap_or("0x3000");
+    let entrypoint = u16::from_str_radix(entrypoint.trim_start_matches("0x"), 16).unwrap();
 
     let throttle = matches
         .value_of("throttle")
         .and_then(|x| x.parse::<u64>().ok())
         .map(Duration::from_millis);
 
-    let entry_point = u16::from_str_radix(entry_point.trim_start_matches("0x"), 16).unwrap();
-
-    VmOptions {
+    ReplParameters {
         throttle,
-        peripherals: vec![],
-        filenames,
-        entry_point,
+        programs,
+        entrypoint,
     }
 }
 
@@ -97,16 +107,7 @@ fn parse_command(line: String) -> Result<Cmd> {
     }
 }
 
-fn eval_line(
-    rl: &mut Editor<()>,
-    state: &mut VmState,
-    opts: &VmOptions,
-    ctrl_c_pressed: Arc<AtomicBool>,
-    line: String,
-) -> Result<()> {
-    rl.add_history_entry(&line);
-    let cmd = parse_command(line)?;
-
+fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Load { path } => {
             let orig = load_object_file(path.as_str(), state)
@@ -122,8 +123,8 @@ fn eval_line(
         Cmd::Run { orig } => {
             state.registers()[Registers::PC] = orig;
             loop {
-                tick(state, opts)?;
-                if ctrl_c_pressed.load(Ordering::Relaxed) {
+                //tick(state, opts)?;
+                if repl_state.pause_after_tick.load(Ordering::Relaxed) {
                     println!(
                         "\n{}Execution paused (PC = 0x{:x})",
                         color::Fg(color::Blue),
@@ -136,30 +137,40 @@ fn eval_line(
 
         Cmd::Help => println!("TODO print help"),
         Cmd::Unknown { line } => {
-            println!("Unknown command '{}'", line)
+            println!("{}Unknown command '{}'", color::Fg(color::Yellow), line)
         }
     }
 
     Ok(())
 }
 
+fn spawn_ctrlc_listener() -> Arc<AtomicBool> {
+    let ctrl_c_pressed = Arc::new(AtomicBool::new(false));
+    let r = ctrl_c_pressed.clone();
+
+    ctrlc::set_handler(move || {
+        r.store(true, Ordering::Relaxed);
+    })
+    .expect("Error setting Ctrl-C handler");
+
+    ctrl_c_pressed
+}
+
 fn main() -> Result<()> {
     pretty_env_logger::init();
+    let parameters = parse_cli_parameters();
 
-    // let mut opts = parse_options();
-    // let mut state = VmState::new();
-    //
-    // let display = TerminalDisplay {};
-    // let keyboard = TerminalKeyboard::new();
-    // opts.peripherals.push(&display);
-    // opts.peripherals.push(&keyboard);
-    //
-    // state.registers()[Registers::PC] = opts.entry_point;
-    // for filename in &opts.filenames {
-    //     load_object_file(filename, &mut state)?;
-    // }
-    //
-    // run(&mut state, &opts)
+    let mut repl_state = ReplState {
+        throttle: parameters.throttle,
+        pause_after_tick: spawn_ctrlc_listener(),
+        peripherals: vec![],
+    };
+
+    let mut vm_state = VmState::new();
+    let display = TerminalDisplay {};
+    //let keyboard = TerminalKeyboard::new();
+    repl_state.peripherals.push(&display);
+    //opts.peripherals.push(&keyboard);
 
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
@@ -167,27 +178,7 @@ fn main() -> Result<()> {
         // TODO: Do I need to do anything here?
     }
 
-    let ctrl_c_pressed = Arc::new(AtomicBool::new(false));
-    let r = ctrl_c_pressed.clone();
-    ctrlc::set_handler(move || {
-        r.store(true, Ordering::Relaxed);
-    })
-    .expect("Error setting Ctrl-C handler");
-
     println!("lc3vm interactive mode. Type ? to get help!");
-
-    let mut opts = VmOptions {
-        peripherals: vec![],
-        filenames: vec![],
-        throttle: None,
-        entry_point: 0,
-    };
-    let mut state = VmState::new();
-    let display = TerminalDisplay {};
-    //let keyboard = TerminalKeyboard::new();
-    opts.peripherals.push(&display);
-    //opts.peripherals.push(&keyboard);
-
     loop {
         let readline = rl.readline(format!("{}>> ", style::Reset).as_str());
 
@@ -196,7 +187,14 @@ fn main() -> Result<()> {
                 if line.is_empty() {
                     continue;
                 }
-                let res = eval_line(&mut rl, &mut state, &opts, ctrl_c_pressed.clone(), line);
+
+                rl.add_history_entry(&line);
+                let cmd = parse_command(line);
+                if let Err(err) = &cmd {
+                    println!("{}{:?}", color::Fg(color::Red), err);
+                }
+
+                let res = eval_line(&mut vm_state, &repl_state, cmd.unwrap());
                 if let Err(err) = res {
                     println!("{}{:?}", color::Fg(color::Red), err);
                 }

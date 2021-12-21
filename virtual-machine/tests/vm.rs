@@ -2,7 +2,7 @@ use std::cell::RefCell;
 
 use lc3vm::peripheral::{AutomatedKeyboard, CapturingDisplay};
 use lc3vm::state::{ConditionFlags, Registers, VmState};
-use lc3vm::{load_object, run, VmOptions};
+use lc3vm::{load_object, run};
 
 // Utility functions
 
@@ -67,82 +67,72 @@ fn assert_supervisor_mode(state: &mut VmState, enabled: bool) {
 
 // Tests
 
-const DEFAULT_OPTS: VmOptions = VmOptions {
-    throttle: None,
-    peripherals: vec![],
-    filenames: vec![],
-    entry_point: 0x3000,
-};
-
 macro_rules! prepare_test {
     ($file:expr) => {{
         let _ = pretty_env_logger::try_init();
-        let opts = DEFAULT_OPTS.with_filename($file);
         let mut state = VmState::new();
         load_object(include_bytes!($file), &mut state).unwrap();
-        (state, opts)
+        state
     }};
     ($file:expr, $entrypoint:expr) => {{
         let _ = pretty_env_logger::try_init();
-        let opts = DEFAULT_OPTS
-            .with_filename($file)
-            .with_entrypoint($entrypoint);
         let mut state = VmState::new();
         load_object(include_bytes!($file), &mut state).unwrap();
-        (state, opts)
+        state.set_pc($entrypoint);
+        state
     }};
 }
 
 #[test]
 fn test_br() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/br.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/br.obj");
+    let result = run(&mut state);
 
     assert!(result.is_ok());
     assert_eq!(state.registers()[Registers::R2], 1);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 2);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 3);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 4);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 5);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 6);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 7);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 8);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 9);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 10);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 11);
 
     state.resume();
-    run(&mut state, &opts).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 12);
 
     // This is only incremented on wrong branch, so should remain zero
@@ -151,76 +141,76 @@ fn test_br() {
 
 #[test]
 fn test_lea() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/lea.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/lea.obj");
+    let result = run(&mut state);
     assert!(result.is_ok());
     assert_eq!(state.registers()[Registers::R0], 0x3002);
 }
 
 #[test]
 fn test_add_immediate() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/add_immediate.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/add_immediate.obj");
+    let result = run(&mut state);
     assert!(result.is_ok());
 
     assert_eq!(state.registers()[Registers::R0], 0x7);
     assert_cc_positive(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0x0);
     assert_cc_zero(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0xFFFF);
     assert_cc_negative(&mut state);
 }
 
 #[test]
 fn test_add_register() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/add_register.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/add_register.obj");
+    let result = run(&mut state);
     assert!(result.is_ok());
 
     assert_eq!(state.registers()[Registers::R0], 0x10);
     assert_cc_positive(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0x0);
     assert_cc_zero(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0xFFF0);
     assert_cc_negative(&mut state);
 }
 
 #[test]
 fn test_ld() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/ld.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/ld.obj");
+    let result = run(&mut state);
     assert!(result.is_ok());
 
     assert_eq!(state.registers()[Registers::R0], 0x4242);
     assert_cc_positive(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0x0);
     assert_cc_zero(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R0], 0xFFFF);
     assert_cc_negative(&mut state);
 }
 
 #[test]
 fn test_jmp() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/jmp.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/jmp.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::PC], 0x3005);
@@ -229,8 +219,8 @@ fn test_jmp() {
 
 #[test]
 fn test_jsr_immediate() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/jsr_immediate.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/jsr_immediate.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::PC], 0x3002);
@@ -240,8 +230,8 @@ fn test_jsr_immediate() {
 
 #[test]
 fn test_jsr_register() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/jsr_register.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/jsr_register.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::PC], 0x3003);
@@ -253,8 +243,8 @@ fn test_jsr_register() {
 
 #[test]
 fn test_ldi() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/ldi.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/ldi.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R0], 0xFFFF);
@@ -263,8 +253,8 @@ fn test_ldi() {
 
 #[test]
 fn test_ldr() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/ldr.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/ldr.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R0], 0x3004);
@@ -274,28 +264,28 @@ fn test_ldr() {
 
 #[test]
 fn test_and() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/and.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/and.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R2], 0x1200);
     assert_cc_positive(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 0);
     assert_cc_zero(&mut state);
 
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R2], 15);
     assert_cc_positive(&mut state);
 }
 
 #[test]
 fn test_not() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/not.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/not.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R1], 0xEDCB);
@@ -304,8 +294,8 @@ fn test_not() {
 
 #[test]
 fn test_st() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/st.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/st.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.memory()[0x3003], (-7i16) as u16);
@@ -313,8 +303,8 @@ fn test_st() {
 
 #[test]
 fn test_sti() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/sti.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/sti.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.memory()[0x3003], (-8i16) as u16);
@@ -322,8 +312,8 @@ fn test_sti() {
 
 #[test]
 fn test_str() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/str.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/str.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.memory()[0x3004], (-9i16) as u16);
@@ -331,8 +321,8 @@ fn test_str() {
 
 #[test]
 fn test_trap() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/trap.obj", 0x200);
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/trap.obj", 0x200);
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R0], 15);
@@ -340,8 +330,8 @@ fn test_trap() {
 
 #[test]
 fn test_br_backwards() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/br_backwards.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/br_backwards.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_eq!(state.registers()[Registers::R0], 10);
@@ -350,8 +340,8 @@ fn test_br_backwards() {
 #[test]
 #[ignore] // Interrupts do not currently work
 fn test_rti() {
-    let (mut state, opts) = prepare_test!("../testcases/simple/rti.obj");
-    let result = run(&mut state, &opts);
+    let mut state = prepare_test!("../testcases/simple/rti.obj");
+    let result = run(&mut state);
     assert!(result.is_ok(), "{}", result.unwrap_err());
 
     assert_supervisor_mode(&mut state, false);
@@ -360,7 +350,7 @@ fn test_rti() {
 
     //tx.send(0x42).unwrap(); // Send an interrupt defined in test file
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
 
     // Test supervisor mode
     assert_supervisor_mode(&mut state, true);
@@ -377,12 +367,12 @@ fn test_rti() {
 
     // Test userland PSR pushed onto supervisor stack
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::R5], 5);
 
     // Test that we're returning to the correct position after RTI
     state.resume();
-    run(&mut state, &DEFAULT_OPTS).unwrap();
+    run(&mut state).unwrap();
     assert_eq!(state.registers()[Registers::PC], 0x204);
     assert_eq!(state.registers()[Registers::R0], (-2i16) as u16);
 }
@@ -394,9 +384,9 @@ fn test_puts() {
     };
 
     {
-        let (mut state, mut opts) = prepare_test!("../testcases/simple/puts.obj", 0x100);
-        opts.peripherals.push(&display);
-        let result = run(&mut state, &opts);
+        let mut state = prepare_test!("../testcases/simple/puts.obj", 0x100);
+        state.peripherals.push(&display);
+        let result = run(&mut state);
         assert!(result.is_ok());
     }
 
@@ -412,10 +402,10 @@ fn test_os() {
     let keyboard = AutomatedKeyboard::new("merp".into());
 
     {
-        let (mut state, mut opts) = prepare_test!("../testcases/complex/os.obj", 0x200);
-        opts.peripherals.push(&display);
-        opts.peripherals.push(&keyboard);
-        let result = run(&mut state, &opts);
+        let mut state = prepare_test!("../testcases/complex/os.obj", 0x200);
+        state.peripherals.push(&display);
+        state.peripherals.push(&keyboard);
+        let result = run(&mut state);
         assert!(result.is_ok());
     }
 
