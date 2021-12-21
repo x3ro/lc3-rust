@@ -1,15 +1,15 @@
-use std::fs::{File, read};
+use std::fs::{read, File};
 use std::io::prelude::*;
-use std::time::Duration;
 use std::io::{self, Write};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::Duration;
 
-use termion::{color, style};
 use anyhow::{Context, Result};
 use clap::{App, Arg};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
+use termion::{color, style};
 
 use lc3vm::peripheral::{TerminalDisplay, TerminalKeyboard};
 
@@ -85,17 +85,25 @@ fn parse_command(line: String) -> Result<Cmd> {
 
     let x: Vec<_> = line.split_whitespace().collect();
     match x.as_slice() {
-        ["load", path] => Ok(Load { path: path.to_string() }),
+        ["load", path] => Ok(Load {
+            path: path.to_string(),
+        }),
         ["run", orig, ..] => {
             let orig = u16::from_str_radix(orig.trim_start_matches("0x"), 16)?;
             Ok(Run { orig })
-        },
+        }
         ["?", ..] => Ok(Help),
-        _ => Ok(Unknown{ line })
+        _ => Ok(Unknown { line }),
     }
 }
 
-fn eval_line(rl: &mut Editor<()>, state: &mut VmState, opts: &VmOptions, ctrl_c_pressed: Arc<AtomicBool>, line: String) -> Result<()> {
+fn eval_line(
+    rl: &mut Editor<()>,
+    state: &mut VmState,
+    opts: &VmOptions,
+    ctrl_c_pressed: Arc<AtomicBool>,
+    line: String,
+) -> Result<()> {
     rl.add_history_entry(&line);
     let cmd = parse_command(line)?;
 
@@ -104,22 +112,32 @@ fn eval_line(rl: &mut Editor<()>, state: &mut VmState, opts: &VmOptions, ctrl_c_
             let orig = load_object_file(path.as_str(), state)
                 .with_context(|| format!("Failed to read from path '{}'", path))?;
 
-            println!("{}Loaded file into memory at origin address 0x{:x}", color::Fg(color::Blue), orig);
+            println!(
+                "{}Loaded file into memory at origin address 0x{:x}",
+                color::Fg(color::Blue),
+                orig
+            );
         }
-        Cmd::Run { orig} => {
+
+        Cmd::Run { orig } => {
             state.registers()[Registers::PC] = orig;
             loop {
                 tick(state, opts)?;
                 if ctrl_c_pressed.load(Ordering::Relaxed) {
-                    println!("\n{}Execution paused (PC = 0x{:x})", color::Fg(color::Blue), state.registers()[Registers::PC]);
-                    break
+                    println!(
+                        "\n{}Execution paused (PC = 0x{:x})",
+                        color::Fg(color::Blue),
+                        state.registers()[Registers::PC]
+                    );
+                    break;
                 }
             }
         }
+
         Cmd::Help => println!("TODO print help"),
         Cmd::Unknown { line } => {
             println!("Unknown command '{}'", line)
-        },
+        }
     }
 
     Ok(())
@@ -154,11 +172,16 @@ fn main() -> Result<()> {
     ctrlc::set_handler(move || {
         r.store(true, Ordering::Relaxed);
     })
-        .expect("Error setting Ctrl-C handler");
+    .expect("Error setting Ctrl-C handler");
 
     println!("lc3vm interactive mode. Type ? to get help!");
 
-    let mut opts = VmOptions { peripherals: vec![], filenames: vec![], throttle: None, entry_point: 0 };
+    let mut opts = VmOptions {
+        peripherals: vec![],
+        filenames: vec![],
+        throttle: None,
+        entry_point: 0,
+    };
     let mut state = VmState::new();
     let display = TerminalDisplay {};
     //let keyboard = TerminalKeyboard::new();
@@ -171,7 +194,7 @@ fn main() -> Result<()> {
         match readline {
             Ok(line) => {
                 if line.is_empty() {
-                    continue
+                    continue;
                 }
                 let res = eval_line(&mut rl, &mut state, &opts, ctrl_c_pressed.clone(), line);
                 if let Err(err) = res {
@@ -180,15 +203,15 @@ fn main() -> Result<()> {
             }
             Err(ReadlineError::Interrupted) => {
                 println!("CTRL-C");
-                break
-            },
+                break;
+            }
             Err(ReadlineError::Eof) => {
                 println!("CTRL-D");
-                break
-            },
+                break;
+            }
             Err(err) => {
                 println!("Error: {:?}", err);
-                break
+                break;
             }
         }
     }
@@ -196,4 +219,3 @@ fn main() -> Result<()> {
     rl.save_history("history.txt")?;
     Ok(())
 }
-
