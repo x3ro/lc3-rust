@@ -57,22 +57,27 @@ impl<'a> VmOptions<'a> {
     }
 }
 
+pub fn tick(state: &mut VmState, opts: &VmOptions) -> Result<()> {
+    state.tick();
+    execute_next_instruction(state)?;
+
+    for p in &opts.peripherals {
+        p.run(state);
+    }
+
+    if opts.throttle.is_some() {
+        thread::sleep(opts.throttle.unwrap());
+    }
+
+    Ok(())
+}
+
 pub fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     let mut ticks = 0;
     let start = Instant::now();
 
     while state.running() {
-        state.tick();
-        execute_next_instruction(state)?;
-
-        for p in &opts.peripherals {
-            p.run(state);
-        }
-
-        if opts.throttle.is_some() {
-            thread::sleep(opts.throttle.unwrap());
-        }
-
+        tick(state, opts)?;
         ticks += 1;
     }
 
@@ -87,7 +92,7 @@ pub fn run(state: &mut VmState, opts: &VmOptions) -> Result<()> {
     Ok(())
 }
 
-pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<()> {
+pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<u16> {
     // LC3 uses 16-bit words, so we need to combine two bytes into one word of memory
     let even = bytes.iter().step_by(2);
     let odd = bytes.iter().skip(1).step_by(2);
@@ -100,10 +105,9 @@ pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<()> {
     // The first two bytes of the object file indicate where to load the program
     let orig = data[0];
     let program = &data[1..];
-    debug!("Loaded an object at <0x{:x}>", orig);
 
     let memory_area = (orig as usize)..((orig as usize) + program.len());
     state.memory_mut()[memory_area].copy_from_slice(program);
 
-    Ok(())
+    Ok(orig)
 }

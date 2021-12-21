@@ -7,3 +7,4 @@ target/
 *.vconst
 .idea
 flamegraph.svg
+history.txt
