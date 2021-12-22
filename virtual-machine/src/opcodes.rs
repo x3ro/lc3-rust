@@ -18,9 +18,14 @@ fn update_condition_codes(state: &mut VmState, value: u16) {
     trace!("{}", fmt_psr(state));
 }
 
+pub fn next_instruction(state: &mut VmState) -> Instruction {
+    let pc = state.registers()[Registers::PC];
+    Instruction::from_raw(state.memory()[pc as u16])
+}
+
 pub fn execute_next_instruction(state: &mut VmState) -> Result<()> {
     let pc = state.registers()[Registers::PC];
-    let instruction = Instruction::from_raw(state.memory_mut()[pc as u16])?;
+    let instruction = next_instruction(state);
 
     debug!("{}", fmt_instruction(state, &instruction)?);
 

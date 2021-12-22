@@ -155,26 +155,26 @@ pub enum Instruction {
 }
 
 impl Instruction {
-    pub fn from_raw(raw: u16) -> Result<Self> {
+    pub fn from_raw(raw: u16) -> Self {
         let opcode = Opcode::from_instruction(raw);
 
         match opcode {
-            Opcode::ADD => Ok(Self::from_add(raw)),
-            Opcode::AND => Ok(Self::from_and(raw)),
-            Opcode::BR => Ok(Self::from_br(raw)),
-            Opcode::JMP => Ok(Self::from_jmp(raw)),
-            Opcode::JSR => Ok(Self::from_jsr(raw)),
-            Opcode::LD => Ok(Self::from_ld(raw)),
-            Opcode::LDI => Ok(Self::from_ldi(raw)),
-            Opcode::LDR => Ok(Self::from_ldr(raw)),
-            Opcode::LEA => Ok(Self::from_lea(raw)),
-            Opcode::NOT => Ok(Self::from_not(raw)),
-            Opcode::RTI => Ok(Rti {}),
-            Opcode::ST => Ok(Self::from_st(raw)),
-            Opcode::STI => Ok(Self::from_sti(raw)),
-            Opcode::STR => Ok(Self::from_str(raw)),
-            Opcode::TRAP => Ok(Self::from_trap(raw)),
-            _ => Err(anyhow!("Unrecognized opcode <0x{:x}>", opcode as u16)),
+            Opcode::ADD => Self::from_add(raw),
+            Opcode::AND => Self::from_and(raw),
+            Opcode::BR => Self::from_br(raw),
+            Opcode::JMP => Self::from_jmp(raw),
+            Opcode::JSR => Self::from_jsr(raw),
+            Opcode::LD => Self::from_ld(raw),
+            Opcode::LDI => Self::from_ldi(raw),
+            Opcode::LDR => Self::from_ldr(raw),
+            Opcode::LEA => Self::from_lea(raw),
+            Opcode::NOT => Self::from_not(raw),
+            Opcode::RTI => Rti {},
+            Opcode::ST => Self::from_st(raw),
+            Opcode::STI => Self::from_sti(raw),
+            Opcode::STR => Self::from_str(raw),
+            Opcode::TRAP => Self::from_trap(raw),
+            Opcode::RES => todo!()
         }
     }
 
