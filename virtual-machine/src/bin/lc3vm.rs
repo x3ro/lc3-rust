@@ -20,7 +20,7 @@ use tui::text::Span;
 use tui::widgets::{Block, Borders, Cell, Row, Table};
 use tui::Terminal;
 
-use lc3vm::peripheral::{Peripheral, TerminalDisplay};
+use lc3vm::peripheral::{Peripheral, TerminalDisplay, TerminalKeyboard};
 
 use lc3vm::{load_object, tick};
 
@@ -456,6 +456,11 @@ fn loop_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Resul
         STYLE_INFO,
     );
 
+    repl_state.push_message(
+        "There's currently no VM keyboard input support in interactive mode!".into(),
+        STYLE_WARN,
+    );
+
     loop {
         std::io::stdout().write(print_ui(&vm_state, &repl_state)?.as_slice())?;
         repl_state.messages.clear();
@@ -509,9 +514,8 @@ fn main() -> Result<()> {
 
     let mut vm_state = VmState::new();
     let display = TerminalDisplay {};
-    //let keyboard = TerminalKeyboard::new();
     repl_state.peripherals.push(&display);
-    //opts.peripherals.push(&keyboard);
+
 
     for p in &parameters.programs {
         let orig = load_object_file(p, &mut vm_state)?;
@@ -540,6 +544,9 @@ fn main() -> Result<()> {
     if repl_state.interactive {
         loop_interactive(&mut vm_state, &mut repl_state)?;
     } else {
+        let keyboard = TerminalKeyboard::new();
+        repl_state.peripherals.push(&keyboard);
+
         let elapsed = loop_non_interactive(&mut vm_state, &mut repl_state)?;
         let mhz = repl_state.ticks_executed as f64 / elapsed.as_secs() as f64 / 1_000_000.0;
         println!(
