@@ -13,9 +13,11 @@ use termion::{color, style};
 
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
+use tui::style::{Color, Modifier, Style};
 
 use tui::widgets::{Block, Borders, Cell, Row, Table};
 use tui::Terminal;
+use tui::text::{Span, Text};
 
 use lc3vm::peripheral::{Peripheral, TerminalDisplay};
 
@@ -24,6 +26,20 @@ use lc3vm::{load_object, tick};
 use lc3vm::opcodes::next_instruction;
 use lc3vm::parser::Instruction;
 use lc3vm::state::{ConditionFlags, Registers, VmState, MEM_SIZE};
+
+const STYLE_INFO: Style = Style {
+    fg: Some(Color::Blue),
+    bg: None,
+    add_modifier: Modifier::empty(),
+    sub_modifier: Modifier::empty(),
+};
+
+const STYLE_ERROR: Style = Style {
+    fg: Some(Color::Red),
+    bg: None,
+    add_modifier: Modifier::empty(),
+    sub_modifier: Modifier::empty(),
+};
 
 fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     let mut f = File::open(filename)?;
@@ -37,6 +53,14 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
 struct ReplState<'a> {
     pause_after_tick: Arc<AtomicBool>,
     peripherals: Vec<&'a dyn Peripheral>,
+    messages: Vec<Span<'a>>,
+    source_context: u16,
+}
+
+impl<'a> ReplState<'a> {
+    fn push_message(&mut self, msg: String, style: Style) {
+        self.messages.push(Span::styled(msg, style));
+    }
 }
 
 struct ReplParameters {
@@ -120,7 +144,7 @@ fn parse_command_step(args: &[&str]) -> Result<Cmd> {
     }
 }
 
-fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()> {
+fn eval_line(state: &mut VmState, repl_state: &mut ReplState, cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Load { path } => {
             let orig = load_object_file(path.as_str(), state)
@@ -138,16 +162,13 @@ fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()
                 tick(state)?;
 
                 if !state.running() {
-                    println!("\n{}VM has been halted", color::Fg(color::Blue));
+                    repl_state.push_message("VM has been halted".into(), STYLE_INFO);
                     break;
                 }
 
                 if repl_state.pause_after_tick.load(Ordering::Relaxed) {
                     repl_state.pause_after_tick.store(false, Ordering::Relaxed);
-                    println!(
-                        "\n{}Execution paused by user (CTRL-C)",
-                        color::Fg(color::Blue),
-                    );
+                    repl_state.push_message("Execution paused by user (CTRL-C)".into(), STYLE_INFO);
                     break;
                 }
             }
@@ -156,7 +177,11 @@ fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()
         Cmd::Continue => eval_line(state, repl_state, Cmd::Step { count: u64::MAX })?,
 
         Cmd::Empty => (), /* Do nothing */
-        Cmd::Help => println!("TODO print help"),
+        Cmd::Help => {
+            repl_state.push_message("Available commands:".into(), STYLE_INFO);
+            repl_state.push_message("(s)tep, (c)ontinue, load <path to obj file>".into(), STYLE_INFO);
+            repl_state.push_message("Press CTRL-C to stop VM while running".into(), STYLE_INFO);
+        },
     }
 
     Ok(())
@@ -280,19 +305,17 @@ fn create_processor_state_widget<'a>(vm_state: &VmState) -> Table<'a> {
         ])
 }
 
-fn create_assembly_widget<'a>(vm_state: &VmState) -> Table<'a> {
-    let context: u16 = 3;
-
+fn create_assembly_widget<'a>(vm_state: &VmState, repl_state: &ReplState) -> Table<'a> {
     let pc = vm_state.registers[Registers::PC];
-    let min = if (pc as usize - context as usize) <= 0 {
+    let min = if (pc as usize - repl_state.source_context as usize) <= 0 {
         0
     } else {
-        pc - context
+        pc - repl_state.source_context
     };
-    let max = if (pc as usize + context as usize) >= MEM_SIZE {
+    let max = if (pc as usize + repl_state.source_context as usize) >= MEM_SIZE {
         MEM_SIZE as u16
     } else {
-        pc + context
+        pc + repl_state.source_context
     };
 
     let regs: Vec<_> = (min..max)
@@ -324,7 +347,20 @@ fn create_assembly_widget<'a>(vm_state: &VmState) -> Table<'a> {
         ])
 }
 
-fn print_ui(vm_state: &VmState) -> Result<Vec<u8>> {
+fn create_message_widget<'a>(repl_state: &'a ReplState) -> Table<'a> {
+    let rows = repl_state.messages.iter().map(|msg| {
+        let cells = vec![Cell::from(msg.clone())];
+        Row::new(cells)
+    });
+
+    Table::new(rows)
+        .block(Block::default().borders(Borders::TOP).title("─── Messages "))
+        .widths(&[
+            Constraint::Percentage(100),
+        ])
+}
+
+fn print_ui(vm_state: &VmState, repl_state: &ReplState) -> Result<Vec<u8>> {
     let mut buf: Vec<u8> = Vec::new();
     {
         let mut backend = TermionBackend::new(Box::new(&mut buf));
@@ -341,6 +377,7 @@ fn print_ui(vm_state: &VmState) -> Result<Vec<u8>> {
                     [
                         Constraint::Min(5),
                         Constraint::Min(3),
+                        Constraint::Min((repl_state.source_context * 2 + 2) as u16),
                         Constraint::Percentage(100),
                     ]
                     .as_ref(),
@@ -349,7 +386,8 @@ fn print_ui(vm_state: &VmState) -> Result<Vec<u8>> {
 
             f.render_widget(create_registers_widget(vm_state), chunks[0]);
             f.render_widget(create_processor_state_widget(vm_state), chunks[1]);
-            f.render_widget(create_assembly_widget(vm_state), chunks[2]);
+            f.render_widget(create_assembly_widget(vm_state, repl_state), chunks[2]);
+            f.render_widget(create_message_widget(repl_state), chunks[3]);
 
             // Position cursor at the bottom for prompt to be rendered
             let s = f.size();
@@ -367,6 +405,8 @@ fn main() -> Result<()> {
     let mut repl_state = ReplState {
         pause_after_tick: spawn_ctrlc_listener(),
         peripherals: vec![],
+        messages: vec![],
+        source_context: 3,
     };
 
     let mut vm_state = VmState::new();
@@ -395,10 +435,11 @@ fn main() -> Result<()> {
 
     let mut last_command = Cmd::Empty;
 
-    //println!("{}lc3vm interactive mode. Type ? to get help!", style::Reset);
+    repl_state.push_message("Welcome to lc3vm interactive mode. Type ? to get help!".into(), STYLE_INFO);
 
     loop {
-        std::io::stdout().write(print_ui(&vm_state)?.as_slice())?;
+        std::io::stdout().write(print_ui(&vm_state, &repl_state)?.as_slice())?;
+        repl_state.messages.clear();
 
         let readline = rl.readline(format!("{}>> ", style::Reset).as_str());
 
@@ -410,16 +451,17 @@ fn main() -> Result<()> {
                     rl.add_history_entry(&line);
                     let cmd = parse_command(line);
                     if let Err(err) = &cmd {
-                        println!("{}{:?}", color::Fg(color::Red), err);
+                        repl_state.push_message(format!("{:?}", err), STYLE_ERROR);
                         continue;
                     }
                     cmd.unwrap()
                 };
 
                 last_command = cmd.clone();
-                let res = eval_line(&mut vm_state, &repl_state, cmd);
+                let res = eval_line(&mut vm_state, &mut repl_state, cmd);
                 if let Err(err) = res {
-                    println!("{}{:?}", color::Fg(color::Red), err);
+                    repl_state.push_message(format!("{:?}", err), STYLE_ERROR);
+                    continue;
                 }
             }
             Err(ReadlineError::Interrupted) => {
