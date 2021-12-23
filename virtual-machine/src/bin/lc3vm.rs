@@ -4,6 +4,7 @@ use std::io::prelude::*;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg};
@@ -55,11 +56,17 @@ struct ReplState<'a> {
     peripherals: Vec<&'a dyn Peripheral>,
     messages: Vec<Span<'a>>,
     source_context: u16,
+    interactive: bool,
+    ticks_executed: u64,
 }
 
 impl<'a> ReplState<'a> {
     fn push_message(&mut self, msg: String, style: Style) {
-        self.messages.push(Span::styled(msg, style));
+        if self.interactive {
+            self.messages.push(Span::styled(msg, style));
+        } else {
+            println!("{}", msg);
+        }
     }
 }
 
@@ -160,6 +167,7 @@ fn eval_line(state: &mut VmState, repl_state: &mut ReplState, cmd: Cmd) -> Resul
         Cmd::Step { count } => {
             for _ in 0..count {
                 tick(state)?;
+                repl_state.ticks_executed += 1;
 
                 if !state.running() {
                     repl_state.push_message("VM has been halted".into(), STYLE_INFO);
@@ -398,35 +406,13 @@ fn print_ui(vm_state: &VmState, repl_state: &ReplState) -> Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn main() -> Result<()> {
-    pretty_env_logger::init();
-    let parameters = parse_cli_parameters();
+fn loop_non_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Result<Duration> {
+    let start = Instant::now();
+    eval_line(vm_state, repl_state, Cmd::Continue);
+    Ok(start.elapsed())
+}
 
-    let mut repl_state = ReplState {
-        pause_after_tick: spawn_ctrlc_listener(),
-        peripherals: vec![],
-        messages: vec![],
-        source_context: 3,
-    };
-
-    let mut vm_state = VmState::new();
-    let display = TerminalDisplay {};
-    //let keyboard = TerminalKeyboard::new();
-    repl_state.peripherals.push(&display);
-    //opts.peripherals.push(&keyboard);
-
-    for p in &parameters.programs {
-        let orig = load_object_file(p, &mut vm_state)?;
-        println!("{}Loaded '{}' at '0x{:x}'", color::Fg(color::Blue), p, orig);
-    }
-
-    vm_state.set_pc(parameters.entrypoint);
-    // println!(
-    //     "{}Set program counter to start at '0x{:x}'",
-    //     color::Fg(color::Blue),
-    //     parameters.entrypoint
-    // );
-
+fn loop_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Result<()> {
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
         //println!("{}No previous history.", color::Fg(color::Blue));
@@ -458,7 +444,7 @@ fn main() -> Result<()> {
                 };
 
                 last_command = cmd.clone();
-                let res = eval_line(&mut vm_state, &mut repl_state, cmd);
+                let res = eval_line(vm_state, repl_state, cmd);
                 if let Err(err) = res {
                     repl_state.push_message(format!("{:?}", err), STYLE_ERROR);
                     continue;
@@ -480,5 +466,43 @@ fn main() -> Result<()> {
     }
 
     rl.save_history("history.txt")?;
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    pretty_env_logger::init();
+    let parameters = parse_cli_parameters();
+
+    let mut repl_state = ReplState {
+        pause_after_tick: spawn_ctrlc_listener(),
+        peripherals: vec![],
+        messages: vec![],
+        source_context: 3,
+        interactive: false,
+        ticks_executed: 0,
+    };
+
+    let mut vm_state = VmState::new();
+    let display = TerminalDisplay {};
+    //let keyboard = TerminalKeyboard::new();
+    repl_state.peripherals.push(&display);
+    //opts.peripherals.push(&keyboard);
+
+    for p in &parameters.programs {
+        let orig = load_object_file(p, &mut vm_state)?;
+        repl_state.push_message(format!("Loaded '{}' at '0x{:x}'", p, orig), STYLE_INFO);
+    };
+
+    vm_state.set_pc(parameters.entrypoint);
+    repl_state.push_message(format!("Set program counter to start at '0x{:x}", parameters.entrypoint), STYLE_INFO);
+
+    if repl_state.interactive {
+        loop_interactive(&mut vm_state, &mut repl_state)?;
+    } else {
+        let elapsed = loop_non_interactive(&mut vm_state, &mut repl_state)?;
+        let mhz = repl_state.ticks_executed as f64 / elapsed.as_secs() as f64 / 1_000_000.0;
+        println!("Executed {} ticks in {}ms ({} MHz)", repl_state.ticks_executed, elapsed.as_millis(), mhz)
+    }
+
     Ok(())
 }
