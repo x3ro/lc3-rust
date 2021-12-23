@@ -341,7 +341,7 @@ fn create_processor_state_widget<'a>(vm_state: &VmState) -> Table<'a> {
         ])
 }
 
-fn create_assembly_widget<'a>(vm_state: &VmState, repl_state: &ReplState) -> Table<'a> {
+fn create_disassembly_widget<'a>(vm_state: &VmState, repl_state: &ReplState) -> Table<'a> {
     let pc = vm_state.registers[Registers::PC];
     let min = if (pc as usize - repl_state.source_context as usize) <= 0 {
         0
@@ -374,7 +374,7 @@ fn create_assembly_widget<'a>(vm_state: &VmState, repl_state: &ReplState) -> Tab
     });
 
     Table::new(rows)
-        .block(Block::default().borders(Borders::TOP).title("─── Source "))
+        .block(Block::default().borders(Borders::TOP).title("─── Disassembled bytecode "))
         .widths(&[
             Constraint::Min(3),
             Constraint::Min(7),
@@ -424,7 +424,7 @@ fn print_ui(vm_state: &VmState, repl_state: &ReplState) -> Result<Vec<u8>> {
 
             f.render_widget(create_registers_widget(vm_state), chunks[0]);
             f.render_widget(create_processor_state_widget(vm_state), chunks[1]);
-            f.render_widget(create_assembly_widget(vm_state, repl_state), chunks[2]);
+            f.render_widget(create_disassembly_widget(vm_state, repl_state), chunks[2]);
             f.render_widget(create_message_widget(repl_state), chunks[3]);
 
             // Position cursor at the bottom for prompt to be rendered
