@@ -16,15 +16,14 @@ use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
 use tui::style::{Color, Modifier, Style};
 
+use tui::text::Span;
 use tui::widgets::{Block, Borders, Cell, Row, Table};
 use tui::Terminal;
-use tui::text::{Span, Text};
 
 use lc3vm::peripheral::{Peripheral, TerminalDisplay};
 
 use lc3vm::{load_object, tick};
 
-use lc3vm::opcodes::next_instruction;
 use lc3vm::parser::Instruction;
 use lc3vm::state::{ConditionFlags, Registers, VmState, MEM_SIZE};
 
@@ -37,6 +36,13 @@ const STYLE_INFO: Style = Style {
 
 const STYLE_ERROR: Style = Style {
     fg: Some(Color::Red),
+    bg: None,
+    add_modifier: Modifier::empty(),
+    sub_modifier: Modifier::empty(),
+};
+
+const STYLE_WARN: Style = Style {
+    fg: Some(Color::Yellow),
     bg: None,
     add_modifier: Modifier::empty(),
     sub_modifier: Modifier::empty(),
@@ -56,11 +62,22 @@ struct ReplState<'a> {
     peripherals: Vec<&'a dyn Peripheral>,
     messages: Vec<Span<'a>>,
     source_context: u16,
-    interactive: bool,
     ticks_executed: u64,
+    interactive: bool,
 }
 
 impl<'a> ReplState<'a> {
+    fn from_params(params: &ReplParameters) -> Self {
+        ReplState {
+            pause_after_tick: spawn_ctrlc_listener(),
+            peripherals: vec![],
+            messages: vec![],
+            source_context: 3,
+            ticks_executed: 0,
+            interactive: params.interactive,
+        }
+    }
+
     fn push_message(&mut self, msg: String, style: Style) {
         if self.interactive {
             self.messages.push(Span::styled(msg, style));
@@ -73,6 +90,7 @@ impl<'a> ReplState<'a> {
 struct ReplParameters {
     programs: Vec<String>,
     entrypoint: u16,
+    interactive: bool,
 }
 
 fn parse_cli_parameters() -> ReplParameters {
@@ -92,10 +110,10 @@ fn parse_cli_parameters() -> ReplParameters {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("throttle")
-                .long("throttle")
-                .value_name("MILLISECONDS")
-                .takes_value(true),
+            Arg::with_name("interactive")
+                .long("interactive")
+                .short("i")
+                .takes_value(false),
         )
         .get_matches();
 
@@ -105,10 +123,12 @@ fn parse_cli_parameters() -> ReplParameters {
         .map(|s| s.into())
         .collect();
 
+    let interactive = matches.is_present("interactive");
     let entrypoint = matches.value_of("entrypoint").unwrap_or("0x3000");
     let entrypoint = u16::from_str_radix(entrypoint.trim_start_matches("0x"), 16).unwrap();
 
     ReplParameters {
+        interactive,
         programs,
         entrypoint,
     }
@@ -184,12 +204,20 @@ fn eval_line(state: &mut VmState, repl_state: &mut ReplState, cmd: Cmd) -> Resul
 
         Cmd::Continue => eval_line(state, repl_state, Cmd::Step { count: u64::MAX })?,
 
-        Cmd::Empty => (), /* Do nothing */
+        Cmd::Empty => {
+            repl_state.push_message(
+                "You're in interactive mode. Type ? to get help or CTRL-C to exit.".into(),
+                STYLE_INFO,
+            );
+        }
         Cmd::Help => {
             repl_state.push_message("Available commands:".into(), STYLE_INFO);
-            repl_state.push_message("(s)tep, (c)ontinue, load <path to obj file>".into(), STYLE_INFO);
+            repl_state.push_message(
+                "(s)tep, (c)ontinue, load <path to obj file>".into(),
+                STYLE_INFO,
+            );
             repl_state.push_message("Press CTRL-C to stop VM while running".into(), STYLE_INFO);
-        },
+        }
     }
 
     Ok(())
@@ -362,10 +390,12 @@ fn create_message_widget<'a>(repl_state: &'a ReplState) -> Table<'a> {
     });
 
     Table::new(rows)
-        .block(Block::default().borders(Borders::TOP).title("─── Messages "))
-        .widths(&[
-            Constraint::Percentage(100),
-        ])
+        .block(
+            Block::default()
+                .borders(Borders::TOP)
+                .title("─── Messages "),
+        )
+        .widths(&[Constraint::Percentage(100)])
 }
 
 fn print_ui(vm_state: &VmState, repl_state: &ReplState) -> Result<Vec<u8>> {
@@ -408,7 +438,7 @@ fn print_ui(vm_state: &VmState, repl_state: &ReplState) -> Result<Vec<u8>> {
 
 fn loop_non_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Result<Duration> {
     let start = Instant::now();
-    eval_line(vm_state, repl_state, Cmd::Continue);
+    eval_line(vm_state, repl_state, Cmd::Continue)?;
     Ok(start.elapsed())
 }
 
@@ -421,7 +451,10 @@ fn loop_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Resul
 
     let mut last_command = Cmd::Empty;
 
-    repl_state.push_message("Welcome to lc3vm interactive mode. Type ? to get help!".into(), STYLE_INFO);
+    repl_state.push_message(
+        "Welcome to lc3vm interactive mode. Type ? to get help or CTRL-C to exit.".into(),
+        STYLE_INFO,
+    );
 
     loop {
         std::io::stdout().write(print_ui(&vm_state, &repl_state)?.as_slice())?;
@@ -472,15 +505,7 @@ fn loop_interactive(vm_state: &mut VmState, repl_state: &mut ReplState) -> Resul
 fn main() -> Result<()> {
     pretty_env_logger::init();
     let parameters = parse_cli_parameters();
-
-    let mut repl_state = ReplState {
-        pause_after_tick: spawn_ctrlc_listener(),
-        peripherals: vec![],
-        messages: vec![],
-        source_context: 3,
-        interactive: false,
-        ticks_executed: 0,
-    };
+    let mut repl_state = ReplState::from_params(&parameters);
 
     let mut vm_state = VmState::new();
     let display = TerminalDisplay {};
@@ -491,17 +516,38 @@ fn main() -> Result<()> {
     for p in &parameters.programs {
         let orig = load_object_file(p, &mut vm_state)?;
         repl_state.push_message(format!("Loaded '{}' at '0x{:x}'", p, orig), STYLE_INFO);
-    };
+    }
+
+    if parameters.programs.is_empty() {
+        repl_state.interactive = true;
+        repl_state.push_message(
+            "You didn't request interactive mode, but we've enabled it,".into(),
+            STYLE_WARN,
+        );
+        repl_state.push_message(
+            "because you didn't specify a program to load via the CLI".into(),
+            STYLE_WARN,
+        );
+        repl_state.push_message(
+            "But, lucky you, do so now with the `load <path>` command!".into(),
+            STYLE_WARN,
+        );
+    }
 
     vm_state.set_pc(parameters.entrypoint);
-    repl_state.push_message(format!("Set program counter to start at '0x{:x}", parameters.entrypoint), STYLE_INFO);
+    //repl_state.push_message(format!("Set program counter to start at '0x{:x}", parameters.entrypoint), STYLE_INFO);
 
     if repl_state.interactive {
         loop_interactive(&mut vm_state, &mut repl_state)?;
     } else {
         let elapsed = loop_non_interactive(&mut vm_state, &mut repl_state)?;
         let mhz = repl_state.ticks_executed as f64 / elapsed.as_secs() as f64 / 1_000_000.0;
-        println!("Executed {} ticks in {}ms ({} MHz)", repl_state.ticks_executed, elapsed.as_millis(), mhz)
+        println!(
+            "Executed {} ticks in {}ms ({} MHz)",
+            repl_state.ticks_executed,
+            elapsed.as_millis(),
+            mhz
+        )
     }
 
     Ok(())
