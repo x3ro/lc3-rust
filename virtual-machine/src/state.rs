@@ -6,7 +6,7 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
 
-const MEM_SIZE: usize = 65535;
+pub const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
 
 #[derive(FromPrimitive, Debug, Clone)]

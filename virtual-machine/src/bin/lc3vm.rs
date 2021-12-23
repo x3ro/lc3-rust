@@ -1,22 +1,29 @@
 use std::fs::File;
+
 use std::io::prelude::*;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use clap::{App, Arg, Values};
+use clap::{App, Arg};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use termion::{color, style};
 
+use tui::backend::TermionBackend;
+use tui::layout::{Constraint, Direction, Layout};
+
+use tui::widgets::{Block, Borders, Cell, Row, Table};
+use tui::Terminal;
+
 use lc3vm::peripheral::{Peripheral, TerminalDisplay};
 
 use lc3vm::{load_object, tick};
-use lc3vm::debug::fmt_instruction;
+
 use lc3vm::opcodes::next_instruction;
-use lc3vm::state::{Registers, VmState};
+use lc3vm::parser::Instruction;
+use lc3vm::state::{ConditionFlags, Registers, VmState, MEM_SIZE};
 
 fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     let mut f = File::open(filename)?;
@@ -28,13 +35,11 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
 }
 
 struct ReplState<'a> {
-    throttle: Option<Duration>,
     pause_after_tick: Arc<AtomicBool>,
     peripherals: Vec<&'a dyn Peripheral>,
 }
 
 struct ReplParameters {
-    throttle: Option<Duration>,
     programs: Vec<String>,
     entrypoint: u16,
 }
@@ -72,13 +77,7 @@ fn parse_cli_parameters() -> ReplParameters {
     let entrypoint = matches.value_of("entrypoint").unwrap_or("0x3000");
     let entrypoint = u16::from_str_radix(entrypoint.trim_start_matches("0x"), 16).unwrap();
 
-    let throttle = matches
-        .value_of("throttle")
-        .and_then(|x| x.parse::<u64>().ok())
-        .map(Duration::from_millis);
-
     ReplParameters {
-        throttle,
         programs,
         entrypoint,
     }
@@ -102,7 +101,7 @@ fn parse_command(line: String) -> Result<Cmd> {
             path: path.to_string(),
         }),
         ["c"] | ["continue"] => Ok(Continue),
-        ["s", args @ .. ] | ["step", args @ .. ] => parse_command_step(args),
+        ["s", args @ ..] | ["step", args @ ..] => parse_command_step(args),
         ["?", ..] => Ok(Help),
         _ => Err(anyhow!("Unknown command '{}'", line)),
     }
@@ -110,15 +109,15 @@ fn parse_command(line: String) -> Result<Cmd> {
 
 fn parse_command_step(args: &[&str]) -> Result<Cmd> {
     match args {
-        [] => {
-            Ok(Cmd::Step { count: 1 })
-        }
-        [count] => {
-            Ok(Cmd::Step { count: u64::from_str_radix(count, 10)? })
-        }
-        x => Err(anyhow!("Unknown arguments '{}' for 'step' command", x.join(" ")))
+        [] => Ok(Cmd::Step { count: 1 }),
+        [count] => Ok(Cmd::Step {
+            count: u64::from_str_radix(count, 10)?,
+        }),
+        x => Err(anyhow!(
+            "Unknown arguments '{}' for 'step' command",
+            x.join(" ")
+        )),
     }
-
 }
 
 fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()> {
@@ -134,36 +133,29 @@ fn eval_line(state: &mut VmState, repl_state: &ReplState, cmd: Cmd) -> Result<()
             );
         }
 
-        Cmd::Step { count }  => {
+        Cmd::Step { count } => {
             for _ in 0..count {
-                let next = next_instruction(state);
-                println!("{}{}", style::Reset, fmt_instruction(state, &next)?);
-
                 tick(state)?;
 
                 if !state.running() {
                     println!("\n{}VM has been halted", color::Fg(color::Blue));
-                    break
+                    break;
                 }
 
                 if repl_state.pause_after_tick.load(Ordering::Relaxed) {
                     repl_state.pause_after_tick.store(false, Ordering::Relaxed);
                     println!(
-                        "\n{}Execution paused by user (CTRL-C)", color::Fg(color::Blue),
+                        "\n{}Execution paused by user (CTRL-C)",
+                        color::Fg(color::Blue),
                     );
                     break;
                 }
             }
-
-            let next = next_instruction(state);
-            println!("{}{}", style::Reset, fmt_instruction(state, &next)?);
-        },
-
-        Cmd::Continue => {
-            eval_line(state, repl_state, Cmd::Step { count: u64::MAX })?
         }
 
-        Cmd::Empty => () /* Do nothing */,
+        Cmd::Continue => eval_line(state, repl_state, Cmd::Step { count: u64::MAX })?,
+
+        Cmd::Empty => (), /* Do nothing */
         Cmd::Help => println!("TODO print help"),
     }
 
@@ -182,12 +174,197 @@ fn spawn_ctrlc_listener() -> Arc<AtomicBool> {
     ctrl_c_pressed
 }
 
+fn create_registers_widget<'a>(vm_state: &VmState) -> Table<'a> {
+    let regs = vec![
+        format!(
+            "R0: 0x{:04x} ({})",
+            vm_state.registers[Registers::R0],
+            vm_state.registers[Registers::R0] as i16
+        ),
+        format!(
+            "R1: 0x{:04x} ({})",
+            vm_state.registers[Registers::R1],
+            vm_state.registers[Registers::R1] as i16
+        ),
+        format!(
+            "R2: 0x{:04x} ({})",
+            vm_state.registers[Registers::R2],
+            vm_state.registers[Registers::R2] as i16
+        ),
+        format!(
+            "R3: 0x{:04x} ({})",
+            vm_state.registers[Registers::R3],
+            vm_state.registers[Registers::R3] as i16
+        ),
+        format!(
+            "R4: 0x{:04x} ({})",
+            vm_state.registers[Registers::R4],
+            vm_state.registers[Registers::R4] as i16
+        ),
+        format!(
+            "R5: 0x{:04x} ({})",
+            vm_state.registers[Registers::R5],
+            vm_state.registers[Registers::R5] as i16
+        ),
+        format!(
+            "R6: 0x{:04x} ({})",
+            vm_state.registers[Registers::R6],
+            vm_state.registers[Registers::R6] as i16
+        ),
+        format!(
+            "R7: 0x{:04x} ({})",
+            vm_state.registers[Registers::R7],
+            vm_state.registers[Registers::R7] as i16
+        ),
+    ];
+
+    let rows = regs.chunks(3).map(|items| {
+        let cells = items.iter().map(|c| Cell::from(c.clone()));
+        Row::new(cells) //.height(height as u16)
+    });
+
+    Table::new(rows)
+        .block(
+            Block::default()
+                .borders(Borders::TOP)
+                .title("─── Registers "),
+        )
+        .widths(&[
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+            Constraint::Ratio(1, 3),
+            // Constraint::Length(30),
+            // Constraint::Min(10),
+        ])
+}
+
+fn create_processor_state_widget<'a>(vm_state: &VmState) -> Table<'a> {
+    let psr = vm_state.registers[Registers::PSR];
+    let n = if (psr & ConditionFlags::Negative as u16) > 0 {
+        "N"
+    } else {
+        "n"
+    };
+    let z = if (psr & ConditionFlags::Zero as u16) > 0 {
+        "Z"
+    } else {
+        "z"
+    };
+    let p = if (psr & ConditionFlags::Positive as u16) > 0 {
+        "P"
+    } else {
+        "p"
+    };
+
+    let regs = vec![
+        format!("PC: 0x{:04x}", vm_state.registers[Registers::PC]),
+        format!("PSR: 0x{:04x} ({}{}{})", psr, n, z, p),
+        format!("SSP: 0x{:04x}", vm_state.registers[Registers::SSP]),
+    ];
+
+    let rows = regs.chunks(3).map(|items| {
+        let cells = items.iter().map(|c| Cell::from(c.clone()));
+        Row::new(cells) //.height(height as u16)
+    });
+
+    Table::new(rows)
+        .block(
+            Block::default()
+                .borders(Borders::TOP)
+                .title("─── Processor state "),
+        )
+        .widths(&[
+            Constraint::Percentage(33),
+            Constraint::Length(30),
+            Constraint::Min(10),
+        ])
+}
+
+fn create_assembly_widget<'a>(vm_state: &VmState) -> Table<'a> {
+    let context: u16 = 3;
+
+    let pc = vm_state.registers[Registers::PC];
+    let min = if (pc as usize - context as usize) <= 0 {
+        0
+    } else {
+        pc - context
+    };
+    let max = if (pc as usize + context as usize) >= MEM_SIZE {
+        MEM_SIZE as u16
+    } else {
+        pc + context
+    };
+
+    let regs: Vec<_> = (min..max)
+        .map(|addr| {
+            let value = vm_state.memory[addr];
+            let marker = if addr == pc { "=> " } else { "" };
+            let instruction = Instruction::from_raw(value);
+            vec![
+                marker.into(),
+                format!("0x{:04x}", addr),
+                format!("{:02x} {:02x}", (value >> 8) & 0xff, value & 0xff),
+                format!("{:?}", instruction),
+            ]
+        })
+        .collect();
+
+    let rows = regs.iter().map(|items| {
+        let cells = items.iter().map(|c| Cell::from(c.clone()));
+        Row::new(cells) //.height(height as u16)
+    });
+
+    Table::new(rows)
+        .block(Block::default().borders(Borders::TOP).title("─── Source "))
+        .widths(&[
+            Constraint::Min(3),
+            Constraint::Min(7),
+            Constraint::Min(7),
+            Constraint::Percentage(100),
+        ])
+}
+
+fn print_ui(vm_state: &VmState) -> Result<Vec<u8>> {
+    let mut buf: Vec<u8> = Vec::new();
+    {
+        let mut backend = TermionBackend::new(Box::new(&mut buf));
+        backend.write(termion::clear::All.as_ref())?;
+        backend.write(termion::style::Reset.as_ref())?;
+
+        let mut terminal = Terminal::new(backend)?;
+
+        terminal.draw(|f| {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints(
+                    [
+                        Constraint::Min(5),
+                        Constraint::Min(3),
+                        Constraint::Percentage(100),
+                    ]
+                    .as_ref(),
+                )
+                .split(f.size());
+
+            f.render_widget(create_registers_widget(vm_state), chunks[0]);
+            f.render_widget(create_processor_state_widget(vm_state), chunks[1]);
+            f.render_widget(create_assembly_widget(vm_state), chunks[2]);
+
+            // Position cursor at the bottom for prompt to be rendered
+            let s = f.size();
+            f.set_cursor(0, s.height - 1);
+        })?;
+    }
+
+    Ok(buf)
+}
+
 fn main() -> Result<()> {
     pretty_env_logger::init();
     let parameters = parse_cli_parameters();
 
     let mut repl_state = ReplState {
-        throttle: parameters.throttle,
         pause_after_tick: spawn_ctrlc_listener(),
         peripherals: vec![],
     };
@@ -204,18 +381,25 @@ fn main() -> Result<()> {
     }
 
     vm_state.set_pc(parameters.entrypoint);
-    println!("{}Set program counter to start at '0x{:x}'", color::Fg(color::Blue), parameters.entrypoint);
+    // println!(
+    //     "{}Set program counter to start at '0x{:x}'",
+    //     color::Fg(color::Blue),
+    //     parameters.entrypoint
+    // );
 
     let mut rl = Editor::<()>::new();
     if rl.load_history("history.txt").is_err() {
-        println!("{}No previous history.", color::Fg(color::Blue));
+        //println!("{}No previous history.", color::Fg(color::Blue));
         // TODO: Do I need to do anything here?
     }
 
     let mut last_command = Cmd::Empty;
 
-    println!("{}lc3vm interactive mode. Type ? to get help!", style::Reset);
+    //println!("{}lc3vm interactive mode. Type ? to get help!", style::Reset);
+
     loop {
+        std::io::stdout().write(print_ui(&vm_state)?.as_slice())?;
+
         let readline = rl.readline(format!("{}>> ", style::Reset).as_str());
 
         match readline {
@@ -227,7 +411,7 @@ fn main() -> Result<()> {
                     let cmd = parse_command(line);
                     if let Err(err) = &cmd {
                         println!("{}{:?}", color::Fg(color::Red), err);
-                        continue
+                        continue;
                     }
                     cmd.unwrap()
                 };

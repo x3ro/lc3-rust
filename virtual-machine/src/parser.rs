@@ -1,6 +1,5 @@
 // TODO: rename to decoder (in the fashion of FETCH -> DECODE -> ...)
 
-use anyhow::{anyhow, Result};
 use num_traits::FromPrimitive;
 
 use std::fmt;
@@ -174,7 +173,7 @@ impl Instruction {
             Opcode::STI => Self::from_sti(raw),
             Opcode::STR => Self::from_str(raw),
             Opcode::TRAP => Self::from_trap(raw),
-            Opcode::RES => todo!()
+            Opcode::RES => todo!(),
         }
     }
 
