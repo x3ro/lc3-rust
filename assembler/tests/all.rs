@@ -8,7 +8,7 @@ use pest::Parser;
 
 use pretty_assertions::assert_eq;
 
-const OS_ASM: &str = include_str!("../../virtual-machine/tests/os.asm");
+const OS_ASM: &str = include_str!("../../virtual-machine/testcases/complex/os.asm");
 
 #[derive(PartialEq, Eq)]
 #[doc(hidden)]

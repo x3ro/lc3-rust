@@ -1,10 +1,13 @@
+mod peripherals;
+
 use std::fs::File;
-
 use std::io::prelude::*;
-
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+#[macro_use]
+extern crate log;
 
 use anyhow::{anyhow, Context, Result};
 use clap::{App, Arg};
@@ -20,7 +23,8 @@ use tui::text::Span;
 use tui::widgets::{Block, Borders, Cell, Row, Table};
 use tui::Terminal;
 
-use lc3vm::peripheral::{Peripheral, TerminalDisplay, TerminalKeyboard};
+use crate::peripherals::{TerminalDisplay, TerminalKeyboard};
+use lc3vm::peripheral::Peripheral;
 
 use lc3vm::{load_object, tick};
 
@@ -374,7 +378,11 @@ fn create_disassembly_widget<'a>(vm_state: &VmState, repl_state: &ReplState) -> 
     });
 
     Table::new(rows)
-        .block(Block::default().borders(Borders::TOP).title("─── Disassembled bytecode "))
+        .block(
+            Block::default()
+                .borders(Borders::TOP)
+                .title("─── Disassembled bytecode "),
+        )
         .widths(&[
             Constraint::Min(3),
             Constraint::Min(7),
@@ -515,7 +523,6 @@ fn main() -> Result<()> {
     let mut vm_state = VmState::new();
     let display = TerminalDisplay {};
     repl_state.peripherals.push(&display);
-
 
     for p in &parameters.programs {
         let orig = load_object_file(p, &mut vm_state)?;

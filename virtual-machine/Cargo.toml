@@ -7,13 +7,9 @@ edition = "2021"
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.2"
-clap = "2.32.0"
-termios = "0.3.1"
 anyhow = "1.0.51"
 custom_debug = "0.5.0"
 log = "0.4"
+
+[dev-dependencies]
 pretty_env_logger = "0.4"
-rustyline = "9.1.1"
-termion = "1.5.6"
-ctrlc = "3.2.1"
-tui = "0.16"
