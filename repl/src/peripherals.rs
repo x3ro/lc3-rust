@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::{self, Write};
 
@@ -27,27 +26,6 @@ impl Peripheral for TerminalDisplay {
         print!("{}", character as char);
         io::stdout().flush().unwrap();
 
-        memory[OS_DDR] = 0;
-    }
-}
-
-pub struct CapturingDisplay {
-    pub output: RefCell<String>,
-}
-
-impl Peripheral for CapturingDisplay {
-    fn run(&self, memory: &mut VmMemory) {
-        // Setting bit[15] on the DSR indicates the display is ready
-        // We can always set this, since we're running in sync with the VM
-        // (that is, before a new VM instruction we're always done printing)
-        memory[OS_DSR] = 0b1000_0000_0000_0000;
-
-        let character = (memory[OS_DDR] & 0xFF) as u8;
-        if character == 0 {
-            return;
-        }
-
-        self.output.borrow_mut().push(character as char);
         memory[OS_DDR] = 0;
     }
 }
@@ -105,48 +83,6 @@ impl Peripheral for TerminalKeyboard {
             memory[OS_KBSR] = 0b1000_0000_0000_0000;
             memory[OS_KBDR] = char as u16;
             trace!("Wrote character '{:?}' into memory", char);
-        }
-    }
-}
-
-pub struct AutomatedKeyboard {
-    output: RefCell<String>,
-    counter: RefCell<u8>,
-}
-
-impl AutomatedKeyboard {
-    pub fn new(output: String) -> Self {
-        AutomatedKeyboard {
-            counter: RefCell::new(KEYBOARD_UPDATE_SPEED),
-            output: RefCell::new(output.chars().rev().collect()),
-        }
-    }
-}
-
-impl Peripheral for AutomatedKeyboard {
-    fn run(&self, memory: &mut VmMemory) {
-        let kbdr_access = memory.was_accessed(OS_KBDR);
-        if kbdr_access {
-            trace!("Resetting KBSR because KBDR was accessed last tick");
-            memory[OS_KBSR] = 0x0;
-            return;
-        }
-
-        let ref mut counter = *self.counter.borrow_mut();
-        if *counter > 0 {
-            *counter -= 1;
-            return;
-        }
-        *counter = KEYBOARD_UPDATE_SPEED;
-
-        let kbsr_access = memory.was_accessed(OS_KBSR);
-        if kbsr_access {
-            if let Some(char) = self.output.borrow_mut().pop() {
-                // Setting bit[15] on the KBSR indicates the a new character is ready
-                memory[OS_KBSR] = 0b1000_0000_0000_0000;
-                memory[OS_KBDR] = char as u16;
-                trace!("Wrote character '{:?}' into memory", char);
-            }
         }
     }
 }
