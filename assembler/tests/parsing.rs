@@ -21,52 +21,6 @@ impl<'a> fmt::Debug for PrettyString<'a> {
     }
 }
 
-// Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70
-fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {
-    let indent = if is_newline {
-        "  ".repeat(indent_level)
-    } else {
-        "".to_string()
-    };
-
-    let children: Vec<_> = pair.clone().into_inner().collect();
-    let len = children.len();
-    let children: Vec<_> = children
-        .into_iter()
-        .map(|pair| {
-            format_pair(
-                pair,
-                if len > 1 {
-                    indent_level + 1
-                } else {
-                    indent_level
-                },
-                len > 1,
-            )
-        })
-        .collect();
-
-    let dash = if is_newline { "- " } else { "" };
-
-    match len {
-        0 => format!(
-            "{}{}{:?}: {:?}",
-            indent,
-            dash,
-            pair.as_rule(),
-            pair.as_span().as_str()
-        ),
-        1 => format!("{}{}{:?} > {}", indent, dash, pair.as_rule(), children[0]),
-        _ => format!(
-            "{}{}{:?}\n{}",
-            indent,
-            dash,
-            pair.as_rule(),
-            children.join("\n")
-        ),
-    }
-}
-
 // Macros taken from https://github.com/sunng87/handlebars-rust/blob/d8d9c6e25f49905fcfa1ec0c1afb32d95495cdc7/src/grammar.rs#L33
 macro_rules! assert_rule {
     ($rule:expr, $in:expr) => {
@@ -122,6 +76,7 @@ fn test_lex_instruction() {
     assert_rule!(Rule::instruction, "ADD R0, R0, #1");
     assert_rule!(Rule::instruction, "ADD #1, #1");
     assert_rule!(Rule::instruction, "LDI R0,OS_MCR");
+    assert_rule!(Rule::instruction, "BRnzp SOME_LABEL");
 }
 
 #[test]
@@ -142,6 +97,18 @@ line
     - decimal_operand: "#1"
     - hex_operand: "x123"
   - comment: ";;;; nice label"
+"###
+    );
+}
+
+fn test_foo() {
+    assert_rule_match_ast!(
+        Rule::line,
+        "HALT",
+        r###"
+line
+  - instruction
+    - trap_alias: "HALT"
 "###
     );
 }

@@ -5,9 +5,12 @@ authors = ["Lucas Jenss <public@x3ro.de>"]
 edition = "2021"
 
 [dependencies]
-pest = "2.0"
-pest_derive = "2.0"
+pest = "2.1"
+pest_derive = "2.1"
 wasm-bindgen = "0.2"
+anyhow = "1.0.51"
+num-traits = "0.2"
+num-derive = "0.2"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
