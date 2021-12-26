@@ -4,7 +4,7 @@ use std::fmt;
 
 use lc3as::parser::*;
 use lc3as::*;
-use pest::iterators::Pair;
+
 use pest::Parser;
 
 use pretty_assertions::assert_eq;
