@@ -1,4 +1,5 @@
-use anyhow::{Result, Context};
+use anyhow::{Result, Context, anyhow};
+use pest::error::{Error, ErrorVariant};
 use pest::iterators::{Pair, Pairs};
 use pest::Parser;
 
@@ -64,7 +65,20 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode> {
     for pair in pair.into_inner() {
         match pair.as_rule() {
             Rule::instruction => {
-                instruction = Some(Box::new(build_ast_from_instruction(pair)?));
+                let span = pair.as_span();
+                let result = build_ast_from_instruction(pair);
+
+                let node = result.map_err(|err| {
+                    let msg: Error<()> = Error::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: err.to_string()
+                        },
+                        span
+                    );
+                    anyhow!("{}", msg)
+                })?;
+
+                instruction = Some(Box::new(node));
             }
 
             Rule::label => {

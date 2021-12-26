@@ -23,12 +23,12 @@ pub enum Register {
 }
 
 impl Register {
-    pub fn from_str(s: &str) -> Result<Self> {
-        let s = s.to_lowercase();
+    pub fn from_str(str: &str) -> Result<Self> {
+        let s = str.to_lowercase();
         let s = s.trim_start_matches("r");
         let n = u8::from_str_radix(s, 10)?;
         let opt: Option<Register> = Register::from_u8(n);
-        opt.ok_or(anyhow!("Unknown register '{}'", s))
+        opt.ok_or(anyhow!("Unknown register '{}'", str))
     }
 }
 
