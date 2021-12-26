@@ -1,6 +1,6 @@
 use std::fmt;
-use std::fmt::Display;
-use anyhow::{Context, anyhow};
+
+use anyhow::{anyhow, Context};
 use pest::error::{Error, ErrorVariant};
 use pest::iterators::{Pair, Pairs};
 use pest::{Parser, Position};
@@ -19,9 +19,9 @@ impl<'a> fmt::Display for ErrorWithPosition<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let err: Error<()> = Error::new_from_pos(
             ErrorVariant::CustomError {
-                message: self.msg.clone()
+                message: self.msg.clone(),
             },
-            self.pos.clone()
+            self.pos.clone(),
         );
 
         write!(f, "{}", err)
@@ -31,7 +31,6 @@ impl<'a> fmt::Display for ErrorWithPosition<'a> {
 pub trait PositionContext<'a, T, E> {
     /// Wrap the error value with additional context.
     fn position(self, pos: Position<'a>) -> Result<T, ErrorWithPosition<'a>>;
-
 }
 
 impl<'a, T, E: std::fmt::Display> PositionContext<'a, T, E> for Result<T, E> {
@@ -40,19 +39,17 @@ impl<'a, T, E: std::fmt::Display> PositionContext<'a, T, E> for Result<T, E> {
             Ok(x) => Ok(x),
             Err(err) => Err(ErrorWithPosition {
                 msg: format!("{}", err),
-                pos
-            })
+                pos,
+            }),
         }
     }
 }
-
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 pub struct Lc3Parser;
 
 pub fn parse(source: &str) -> anyhow::Result<Vec<AstNode>> {
-
     let mut pairs: Pairs<Rule> = Lc3Parser::parse(Rule::file, &source)?;
 
     let file = pairs.next().unwrap();
@@ -79,7 +76,6 @@ fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
     }
 
     Ok(ast)
-
 }
 
 fn parse_hex(value: &str) -> anyhow::Result<u16> {
@@ -121,10 +117,7 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
 
         match pair.as_rule() {
             Rule::instruction => {
-
                 let result = build_ast_from_instruction(pair).position(pos)?;
-
-
 
                 instruction = Some(Box::new(result));
             }
@@ -139,7 +132,7 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
                 comment = Some(value.into());
             }
 
-            x => unreachable!("{:?}", x)
+            x => unreachable!("{:?}", x),
         }
     }
 
@@ -163,23 +156,24 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
             Rule::opcode | Rule::pseudo_opcode | Rule::trap_alias => {
                 let res = Opcode::from(pair.as_str()).position(pos)?;
                 opcode = Some(res)
-            },
+            }
 
             Rule::register_operand => {
-                let node = AstNode::RegisterOperand(Register::from_str(pair.as_str()).position(pos)?);
+                let node =
+                    AstNode::RegisterOperand(Register::from_str(pair.as_str()).position(pos)?);
                 operands.push(node);
             }
 
-            Rule::decimal_operand |
-            Rule::hex_operand => {
+            Rule::decimal_operand | Rule::hex_operand => {
                 let s = pair.as_str();
                 let value = match &s[..1] {
-                    "#" =>  i16::from_str_radix(&s[1..], 10).position(pos)? as u16,
-                    "x" =>  u16::from_str_radix(&s[1..], 16).position(pos)?,
-                    _ => unreachable!("The parser should make sure we can't get anything else here"),
+                    "#" => i16::from_str_radix(&s[1..], 10).position(pos)? as u16,
+                    "x" => u16::from_str_radix(&s[1..], 16).position(pos)?,
+                    _ => {
+                        unreachable!("The parser should make sure we can't get anything else here")
+                    }
                 };
                 operands.push(AstNode::ImmediateOperand(value))
-
             }
 
             Rule::string => {
@@ -193,7 +187,7 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
                 operands.push(node);
             }
 
-            x => unreachable!("{:?}", x)
+            x => unreachable!("{:?}", x),
         }
     }
 

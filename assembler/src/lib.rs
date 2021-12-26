@@ -3,8 +3,8 @@ pub mod parser;
 #[macro_use]
 extern crate pest_derive;
 
-use pest::iterators::Pair;
 use anyhow::{anyhow, bail, Result};
+use pest::iterators::Pair;
 
 use num_traits::FromPrimitive;
 
@@ -98,8 +98,8 @@ impl Opcode {
         if value.starts_with("br") {
             let modifiers_str = value.trim_start_matches("br");
             return Ok(Opcode::Br {
-                modifiers: Modifiers::from_str(modifiers_str)?
-            })
+                modifiers: Modifiers::from_str(modifiers_str)?,
+            });
         }
 
         match value.as_ref() {
@@ -159,8 +159,6 @@ pub enum AstNode {
     RegisterOperand(Register),
     ImmediateOperand(u16),
 }
-
-
 
 // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70
 pub fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {
