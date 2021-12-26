@@ -2,7 +2,8 @@ WHITESPACE = _{ " " | "\t" }
 
 modifiers = @{"n" | "z" | "p"}
 opcode = @{ ("ADD" | "AND" | ("BR" ~ modifiers* ) | "JMP" | "JSR" | "JSRR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP") ~ &(WHITESPACE | NEWLINE) }
-pseudo_opcode = @{ ".FILL" | ".STRINGZ" | ".BLKW" }
+pseudo_opcode = @{ (".FILL" | ".STRINGZ" | ".BLKW") ~ &(WHITESPACE | NEWLINE) }
+trap_alias = @{ ("GETC" | "OUT" | "PUTS" | "IN" | "PUTSP" | "HALT") ~ &(WHITESPACE | NEWLINE) }
 
 comment = { ";" ~ (!NEWLINE ~ ANY)* }
 comment_line = _{ comment ~ NEWLINE }
@@ -21,8 +22,12 @@ hex_operand = @{ "x" ~ ASCII_HEX_DIGIT{1,4} }
 decimal_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ }
 immediate_operand = _{ hex_operand | decimal_operand | string }
 operand = _{ register_operand | immediate_operand | label }
+operands = _{ operand? ~ ("," ~ operand)* }
 
-instruction = { (opcode | pseudo_opcode) ~ operand? ~ ("," ~ operand)* }
+instruction = {
+    (opcode | pseudo_opcode | trap_alias ) ~
+    operands
+}
 
 line_with_label = _{ label ~ instruction? }
 line_without_label = _{ instruction }
