@@ -1,26 +1,77 @@
-use anyhow::{Result, Context, anyhow};
+use std::fmt;
+use std::fmt::Display;
+use anyhow::{Context, anyhow};
 use pest::error::{Error, ErrorVariant};
 use pest::iterators::{Pair, Pairs};
-use pest::Parser;
+use pest::{Parser, Position};
 
 use crate::{AstNode, Opcode, Register};
+
+#[derive(Debug, Clone)]
+pub struct ErrorWithPosition<'a> {
+    msg: String,
+    pos: Position<'a>,
+}
+
+impl std::error::Error for ErrorWithPosition<'_> {}
+
+impl<'a> fmt::Display for ErrorWithPosition<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let err: Error<()> = Error::new_from_pos(
+            ErrorVariant::CustomError {
+                message: self.msg.clone()
+            },
+            self.pos.clone()
+        );
+
+        write!(f, "{}", err)
+    }
+}
+
+pub trait PositionContext<'a, T, E> {
+    /// Wrap the error value with additional context.
+    fn position(self, pos: Position<'a>) -> Result<T, ErrorWithPosition<'a>>;
+
+}
+
+impl<'a, T, E: std::fmt::Display> PositionContext<'a, T, E> for Result<T, E> {
+    fn position(self, pos: Position<'a>) -> Result<T, ErrorWithPosition<'a>> {
+        match self {
+            Ok(x) => Ok(x),
+            Err(err) => Err(ErrorWithPosition {
+                msg: format!("{}", err),
+                pos
+            })
+        }
+    }
+}
+
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 pub struct Lc3Parser;
 
-pub fn parse(source: &str) -> Result<Vec<AstNode>> {
-    let mut ast = vec![];
+pub fn parse(source: &str) -> anyhow::Result<Vec<AstNode>> {
+
     let mut pairs: Pairs<Rule> = Lc3Parser::parse(Rule::file, &source)?;
 
     let file = pairs.next().unwrap();
     assert_eq!(file.as_rule(), Rule::file);
 
+    let yay = traverse(file).map_err(|e| anyhow!("{}", e))?;
+    Ok(yay)
+}
+
+fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
+    let mut ast = vec![];
+
     for pair in file.into_inner() {
+        let pos = pair.as_span().start_pos().clone();
+
         match pair.as_rule() {
             Rule::comment => { /* We ignore top-level comments */ }
             Rule::section => {
-                ast.push(build_ast_from_section(pair)?);
+                ast.push(build_ast_from_section(pair).position(pos)?);
             }
             Rule::EOI => { /* Ignore */ }
             rule => unreachable!("{:?} should not occur here", rule),
@@ -28,23 +79,26 @@ pub fn parse(source: &str) -> Result<Vec<AstNode>> {
     }
 
     Ok(ast)
+
 }
 
-fn parse_hex(value: &str) -> Result<u16> {
+fn parse_hex(value: &str) -> anyhow::Result<u16> {
     u16::from_str_radix(value.trim_start_matches("x"), 16).context("")
 }
 
-fn build_ast_from_section(pair: Pair<Rule>) -> Result<AstNode> {
+fn build_ast_from_section(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
     assert_eq!(pair.as_rule(), Rule::section);
 
     let mut origin: u16 = 0;
     let mut content = vec![];
 
     for pair in pair.into_inner() {
+        let pos = pair.as_span().start_pos().clone();
+
         match pair.as_rule() {
             Rule::section_start => {
                 let origin_str = pair.into_inner().next().unwrap().as_str();
-                origin = parse_hex(origin_str)?;
+                origin = parse_hex(origin_str).position(pos)?;
             }
             Rule::line => content.push(build_ast_from_line(pair)?),
             Rule::section_end => { /* Ignore */ }
@@ -55,7 +109,7 @@ fn build_ast_from_section(pair: Pair<Rule>) -> Result<AstNode> {
     Ok(AstNode::SectionScope { origin, content })
 }
 
-fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode> {
+fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
     assert_eq!(pair.as_rule(), Rule::line);
 
     let mut label = None;
@@ -63,22 +117,16 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode> {
     let mut instruction = None;
 
     for pair in pair.into_inner() {
+        let pos = pair.as_span().start_pos().clone();
+
         match pair.as_rule() {
             Rule::instruction => {
-                let span = pair.as_span();
-                let result = build_ast_from_instruction(pair);
 
-                let node = result.map_err(|err| {
-                    let msg: Error<()> = Error::new_from_span(
-                        ErrorVariant::CustomError {
-                            message: err.to_string()
-                        },
-                        span
-                    );
-                    anyhow!("{}", msg)
-                })?;
+                let result = build_ast_from_instruction(pair).position(pos)?;
 
-                instruction = Some(Box::new(node));
+
+
+                instruction = Some(Box::new(result));
             }
 
             Rule::label => {
@@ -102,21 +150,23 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode> {
     })
 }
 
-fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode> {
+fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
     assert_eq!(pair.as_rule(), Rule::instruction);
 
     let mut opcode = None;
     let mut operands = vec![];
 
     for pair in pair.into_inner() {
+        let pos = pair.as_span().start_pos().clone();
+
         match pair.as_rule() {
             Rule::opcode | Rule::pseudo_opcode | Rule::trap_alias => {
-                let res = Opcode::from(pair.as_str())?;
+                let res = Opcode::from(pair.as_str()).position(pos)?;
                 opcode = Some(res)
             },
 
             Rule::register_operand => {
-                let node = AstNode::RegisterOperand(Register::from_str(pair.as_str())?);
+                let node = AstNode::RegisterOperand(Register::from_str(pair.as_str()).position(pos)?);
                 operands.push(node);
             }
 
@@ -124,8 +174,8 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode> {
             Rule::hex_operand => {
                 let s = pair.as_str();
                 let value = match &s[..1] {
-                    "#" =>  i16::from_str_radix(&s[1..], 10)? as u16,
-                    "x" =>  u16::from_str_radix(&s[1..], 16)?,
+                    "#" =>  i16::from_str_radix(&s[1..], 10).position(pos)? as u16,
+                    "x" =>  u16::from_str_radix(&s[1..], 16).position(pos)?,
                     _ => unreachable!("The parser should make sure we can't get anything else here"),
                 };
                 operands.push(AstNode::ImmediateOperand(value))
