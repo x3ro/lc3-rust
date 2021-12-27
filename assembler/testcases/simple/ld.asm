@@ -1,0 +1,12 @@
+.ORIG x3000
+LD R0, POSITIVE
+HALT
+LD R0, ZERO
+HALT
+LD R0, NEGATIVE
+HALT
+ZERO        .FILL x0000
+POSITIVE    .FILL x4242 ;  1
+NEGATIVE    .FILL xFFFF ; -1
+HELLO_STR .STRINGZ "If I don't add this the assembler segfaults"
+.END

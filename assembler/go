@@ -2,6 +2,7 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+cd "$SCRIPT_DIR"
 
 function error {
     echo -e >&2 "\033[31m${1}\033[0m";
@@ -9,7 +10,9 @@ function error {
 }
 
 function notice {
-    echo -e >&2 "\033[33m${1}\033[0m";
+    local msg="$1"
+    shift
+    echo -e "$@" >&2 "\033[33m${msg}\033[0m" ;
 }
 
 function ensure_env {
@@ -26,6 +29,37 @@ function cmd_usage {
     echo "Usage";
 }
 
+function run-single-testcase {
+    local result
+    local exitcode
+    local bin="../target/debug/lc3as"
+
+    local file="$1"
+    shift
+    local additionalArguments="$@"
+
+    notice "Checking '$file' " -n
+
+    set +e
+    result="$("${bin}" "$file" 2>&1; exit $?)"
+    exitcode=$?
+    set -e
+
+    if (( $exitcode == 0 )); then
+        echo "✅"
+    else
+        echo "❌"
+    fi
+}
+
+function cmd_testcases {
+    files="$(find testcases/simple -name '*.asm')"
+    cargo build
+    for file in ${files}; do
+      run-single-testcase "${file}"
+    done
+}
+
 ensure_env
 
 command=""
@@ -36,5 +70,6 @@ fi
 
 case "${command}" in
     test) cmd_test "$@" ;;
+    testcases) cmd_testcases ;;
     *) cmd_usage
 esac

@@ -1,0 +1,313 @@
+.ORIG x0000
+
+; the TRAP vector table
+	.FILL x0000	; x00
+	.FILL x0000	; x01
+	.FILL x0000	; x02
+	.FILL x0000	; x03
+	.FILL x0000	; x04
+	.FILL x0000	; x05
+	.FILL x0000	; x06
+	.FILL x0000	; x07
+	.FILL x0000	; x08
+	.FILL x0000	; x09
+	.FILL x0000	; x0A
+	.FILL x0000	; x0B
+	.FILL x0000	; x0C
+	.FILL x0000	; x0D
+	.FILL x0000	; x0E
+	.FILL x0000	; x0F
+	.FILL x0000	; x10
+	.FILL x0000	; x11
+	.FILL x0000	; x12
+	.FILL x0000	; x13
+	.FILL x0000	; x14
+	.FILL x0000	; x15
+	.FILL x0000	; x16
+	.FILL x0000	; x17
+	.FILL x0000	; x18
+	.FILL x0000	; x19
+	.FILL x0000	; x1A
+	.FILL x0000	; x1B
+	.FILL x0000	; x1C
+	.FILL x0000	; x1D
+	.FILL x0000	; x1E
+	.FILL x0000	; x1F
+	.FILL x0000	; x20
+	.FILL TRAP_OUT	; x21
+	.FILL TRAP_PUTS	; x22
+	.FILL x0000	; x23
+	.FILL x0000 ; x24
+	.FILL x0000	; x25
+	.FILL x0000	; x26
+	.FILL x0000	; x27
+	.FILL x0000	; x28
+	.FILL x0000	; x29
+	.FILL x0000	; x2A
+	.FILL x0000	; x2B
+	.FILL x0000	; x2C
+	.FILL x0000	; x2D
+	.FILL x0000	; x2E
+	.FILL x0000	; x2F
+	.FILL x0000	; x30
+	.FILL x0000	; x31
+	.FILL x0000	; x32
+	.FILL x0000	; x33
+	.FILL x0000	; x34
+	.FILL x0000	; x35
+	.FILL x0000	; x36
+	.FILL x0000	; x37
+	.FILL x0000	; x38
+	.FILL x0000	; x39
+	.FILL x0000	; x3A
+	.FILL x0000	; x3B
+	.FILL x0000	; x3C
+	.FILL x0000	; x3D
+	.FILL x0000	; x3E
+	.FILL x0000	; x3F
+	.FILL x0000	; x40
+	.FILL x0000	; x41
+	.FILL x0000	; x42
+	.FILL x0000	; x43
+	.FILL x0000	; x44
+	.FILL x0000	; x45
+	.FILL x0000	; x46
+	.FILL x0000	; x47
+	.FILL x0000	; x48
+	.FILL x0000	; x49
+	.FILL x0000	; x4A
+	.FILL x0000	; x4B
+	.FILL x0000	; x4C
+	.FILL x0000	; x4D
+	.FILL x0000	; x4E
+	.FILL x0000	; x4F
+	.FILL x0000	; x50
+	.FILL x0000	; x51
+	.FILL x0000	; x52
+	.FILL x0000	; x53
+	.FILL x0000	; x54
+	.FILL x0000	; x55
+	.FILL x0000	; x56
+	.FILL x0000	; x57
+	.FILL x0000	; x58
+	.FILL x0000	; x59
+	.FILL x0000	; x5A
+	.FILL x0000	; x5B
+	.FILL x0000	; x5C
+	.FILL x0000	; x5D
+	.FILL x0000	; x5E
+	.FILL x0000	; x5F
+	.FILL x0000	; x60
+	.FILL x0000	; x61
+	.FILL x0000	; x62
+	.FILL x0000	; x63
+	.FILL x0000	; x64
+	.FILL x0000	; x65
+	.FILL x0000	; x66
+	.FILL x0000	; x67
+	.FILL x0000	; x68
+	.FILL x0000	; x69
+	.FILL x0000	; x6A
+	.FILL x0000	; x6B
+	.FILL x0000	; x6C
+	.FILL x0000	; x6D
+	.FILL x0000	; x6E
+	.FILL x0000	; x6F
+	.FILL x0000	; x70
+	.FILL x0000	; x71
+	.FILL x0000	; x72
+	.FILL x0000	; x73
+	.FILL x0000	; x74
+	.FILL x0000	; x75
+	.FILL x0000	; x76
+	.FILL x0000	; x77
+	.FILL x0000	; x78
+	.FILL x0000	; x79
+	.FILL x0000	; x7A
+	.FILL x0000	; x7B
+	.FILL x0000	; x7C
+	.FILL x0000	; x7D
+	.FILL x0000	; x7E
+	.FILL x0000	; x7F
+	.FILL x0000	; x80
+	.FILL x0000	; x81
+	.FILL x0000	; x82
+	.FILL x0000	; x83
+	.FILL x0000	; x84
+	.FILL x0000	; x85
+	.FILL x0000	; x86
+	.FILL x0000	; x87
+	.FILL x0000	; x88
+	.FILL x0000	; x89
+	.FILL x0000	; x8A
+	.FILL x0000	; x8B
+	.FILL x0000	; x8C
+	.FILL x0000	; x8D
+	.FILL x0000	; x8E
+	.FILL x0000	; x8F
+	.FILL x0000	; x90
+	.FILL x0000	; x91
+	.FILL x0000	; x92
+	.FILL x0000	; x93
+	.FILL x0000	; x94
+	.FILL x0000	; x95
+	.FILL x0000	; x96
+	.FILL x0000	; x97
+	.FILL x0000	; x98
+	.FILL x0000	; x99
+	.FILL x0000	; x9A
+	.FILL x0000	; x9B
+	.FILL x0000	; x9C
+	.FILL x0000	; x9D
+	.FILL x0000	; x9E
+	.FILL x0000	; x9F
+	.FILL x0000	; xA0
+	.FILL x0000	; xA1
+	.FILL x0000	; xA2
+	.FILL x0000	; xA3
+	.FILL x0000	; xA4
+	.FILL x0000	; xA5
+	.FILL x0000	; xA6
+	.FILL x0000	; xA7
+	.FILL x0000	; xA8
+	.FILL x0000	; xA9
+	.FILL x0000	; xAA
+	.FILL x0000	; xAB
+	.FILL x0000	; xAC
+	.FILL x0000	; xAD
+	.FILL x0000	; xAE
+	.FILL x0000	; xAF
+	.FILL x0000	; xB0
+	.FILL x0000	; xB1
+	.FILL x0000	; xB2
+	.FILL x0000	; xB3
+	.FILL x0000	; xB4
+	.FILL x0000	; xB5
+	.FILL x0000	; xB6
+	.FILL x0000	; xB7
+	.FILL x0000	; xB8
+	.FILL x0000	; xB9
+	.FILL x0000	; xBA
+	.FILL x0000	; xBB
+	.FILL x0000	; xBC
+	.FILL x0000	; xBD
+	.FILL x0000	; xBE
+	.FILL x0000	; xBF
+	.FILL x0000	; xC0
+	.FILL x0000	; xC1
+	.FILL x0000	; xC2
+	.FILL x0000	; xC3
+	.FILL x0000	; xC4
+	.FILL x0000	; xC5
+	.FILL x0000	; xC6
+	.FILL x0000	; xC7
+	.FILL x0000	; xC8
+	.FILL x0000	; xC9
+	.FILL x0000	; xCA
+	.FILL x0000	; xCB
+	.FILL x0000	; xCC
+	.FILL x0000	; xCD
+	.FILL x0000	; xCE
+	.FILL x0000	; xCF
+	.FILL x0000	; xD0
+	.FILL x0000	; xD1
+	.FILL x0000	; xD2
+	.FILL x0000	; xD3
+	.FILL x0000	; xD4
+	.FILL x0000	; xD5
+	.FILL x0000	; xD6
+	.FILL x0000	; xD7
+	.FILL x0000	; xD8
+	.FILL x0000	; xD9
+	.FILL x0000	; xDA
+	.FILL x0000	; xDB
+	.FILL x0000	; xDC
+	.FILL x0000	; xDD
+	.FILL x0000	; xDE
+	.FILL x0000	; xDF
+	.FILL x0000	; xE0
+	.FILL x0000	; xE1
+	.FILL x0000	; xE2
+	.FILL x0000	; xE3
+	.FILL x0000	; xE4
+	.FILL x0000	; xE5
+	.FILL x0000	; xE6
+	.FILL x0000	; xE7
+	.FILL x0000	; xE8
+	.FILL x0000	; xE9
+	.FILL x0000	; xEA
+	.FILL x0000	; xEB
+	.FILL x0000	; xEC
+	.FILL x0000	; xED
+	.FILL x0000	; xEE
+	.FILL x0000	; xEF
+	.FILL x0000	; xF0
+	.FILL x0000	; xF1
+	.FILL x0000	; xF2
+	.FILL x0000	; xF3
+	.FILL x0000	; xF4
+	.FILL x0000	; xF5
+	.FILL x0000	; xF6
+	.FILL x0000	; xF7
+	.FILL x0000	; xF8
+	.FILL x0000	; xF9
+	.FILL x0000	; xFA
+	.FILL x0000	; xFB
+	.FILL x0000	; xFC
+	.FILL x0000	; xFD
+	.FILL x0000	; xFE
+	.FILL x0000	; xFF
+
+; this is x0100
+
+LEA R0, HELLO_STR                    ; 0x0101 load the address of the HELLO_STR string into R0
+PUTs                                 ; 0x0101 output the string pointed to by R0 to the console
+HALT                                 ; 0x0102 halt the program
+
+OS_KBSR	.FILL xFE00
+OS_KBDR	.FILL xFE02
+OS_DSR	.FILL xFE04
+OS_DDR	.FILL xFE06
+OS_MCR	.FILL xFFFE
+MASK_HI .FILL x7FFF
+LOW_8_BITS .FILL x00FF
+TOUT_R1 .BLKW 1
+TIN_R7  .BLKW 1
+OS_R0   .BLKW 1
+OS_R1   .BLKW 1
+OS_R2   .BLKW 1
+OS_R3   .BLKW 1
+OS_R7   .BLKW 1
+
+FOO .STRINGZ "test123"
+
+TRAP_OUT
+	ST R1,TOUT_R1		; save R1
+TRAP_OUT_WAIT
+	LDI R1,OS_DSR		; wait for the display to be ready
+	BRzp TRAP_OUT_WAIT
+	STI R0,OS_DDR		; write the character and return
+	LD R1,TOUT_R1		; restore R1
+	RET
+
+TRAP_PUTS
+	ST R0,OS_R0		; save R0, R1, and R7
+	ST R1,OS_R1
+	ST R7,OS_R7
+	ADD R1,R0,#0		; move string pointer (R0) into R1
+
+TRAP_PUTS_LOOP
+	LDR R0,R1,#0		; write characters in string using OUT
+	BRz TRAP_PUTS_DONE
+	OUT
+	ADD R1,R1,#1
+	BRnzp TRAP_PUTS_LOOP
+
+TRAP_PUTS_DONE
+	LD R0,OS_R0		; restore R0, R1, and R7
+	LD R1,OS_R1
+	LD R7,OS_R7
+	RET
+
+HELLO_STR .STRINGZ "Hello World!\n"  ; 0x3003 - ...... store this string here in the program
+.END
