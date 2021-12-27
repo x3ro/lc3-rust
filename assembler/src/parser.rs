@@ -55,7 +55,9 @@ pub fn parse(source: &str) -> anyhow::Result<Vec<AstNode>> {
     let file = pairs.next().unwrap();
     assert_eq!(file.as_rule(), Rule::file);
 
-    let yay = traverse(file).map_err(|e| anyhow!("{}", e))?;
+    let yay = traverse(file).map_err(|e| {
+        anyhow!("{}", e)
+    })?;
     Ok(yay)
 }
 
@@ -68,7 +70,7 @@ fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
         match pair.as_rule() {
             Rule::comment => { /* We ignore top-level comments */ }
             Rule::section => {
-                ast.push(build_ast_from_section(pair).position(pos)?);
+                ast.push(build_ast_from_section(pair)?);
             }
             Rule::EOI => { /* Ignore */ }
             rule => unreachable!("{:?} should not occur here", rule),
@@ -117,7 +119,7 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
 
         match pair.as_rule() {
             Rule::instruction => {
-                let result = build_ast_from_instruction(pair).position(pos)?;
+                let result = build_ast_from_instruction(pair)?;
 
                 instruction = Some(Box::new(result));
             }
