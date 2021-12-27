@@ -31,9 +31,9 @@ instruction = {
 
 line_with_label = _{ label ~ instruction? }
 line_without_label = _{ instruction }
-line = { (line_without_label | line_with_label) ~ comment? ~ NEWLINE}
+line = { (line_without_label | line_with_label)? ~ comment? ~ NEWLINE}
 
-ignored_line = _{ (comment ~ NEWLINE? | NEWLINE) }
+ignored_line = _{ (NEWLINE) }
 
 section_start = { ".ORIG" ~ immediate_operand ~ NEWLINE }
 section_end = { ".END" }
