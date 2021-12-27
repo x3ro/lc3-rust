@@ -1,7 +1,7 @@
 WHITESPACE = _{ " " | "\t" }
 
 modifiers = @{"n" | "z" | "p"}
-opcode = @{ ("ADD" | "AND" | ("BR" ~ modifiers* ) | "JMP" | "JSR" | "JSRR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP") ~ &(WHITESPACE | NEWLINE) }
+opcode = @{ ("ADD" | "AND" | ("BR" ~ modifiers* ) | "JMP" | "JSRR" | "JSR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP") ~ &(WHITESPACE | NEWLINE) }
 pseudo_opcode = @{ (".FILL" | ".STRINGZ" | ".BLKW") ~ &(WHITESPACE | NEWLINE) }
 trap_alias = @{ ("GETC" | "OUT" | "PUTS" | "IN" | "PUTSP" | "HALT") ~ &(WHITESPACE | NEWLINE) }
 
