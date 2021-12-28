@@ -1,9 +1,11 @@
 use std::{env, fs};
+use std::fs::OpenOptions;
 
 use anyhow::Result;
 use pest::iterators::Pairs;
 use pest::Parser;
 
+use std::io::Write;
 
 
 use lc3as::parser::{parse, Lc3Parser, Rule};
@@ -24,18 +26,34 @@ pub fn to_emittable(node: &Box<AstNode>) -> Emittable {
     }
 }
 
-pub fn emit_section(origin: u16, content: Vec<AstNode>) {
+pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Vec<u16> {
+    let mut emittables = vec![];
 
     for line in &content {
         match line {
             AstNode::Line { instruction: Some(x), .. } => {
                 //let y = *x.clone();
-                println!("{:?}", to_emittable(x));
+                emittables.push(to_emittable(x));
             }
 
             x => unreachable!("{:?}", x)
         }
     }
+
+
+
+
+
+
+    println!("{:#?}", &emittables);
+
+
+    let mut data = vec![origin];
+    for e in emittables {
+        data.append(&mut e.emit());
+    }
+
+    data
 }
 
 pub fn main() -> Result<()> {
@@ -58,7 +76,18 @@ pub fn main() -> Result<()> {
 
     match ast.remove(0) {
         AstNode::SectionScope { origin, content } => {
-            emit_section(origin, content);
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .open("foo.out")
+                .unwrap();
+
+            let data = emit_section(origin, content);
+            for word in data {
+                let low = (word & 0xff) as u8;
+                let high = (word & 0xff00) as u8;
+                file.write(&[high, low]);
+            }
         }
 
         x => unreachable!("{:?}", x)
