@@ -58,14 +58,12 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Vec<u16> {
 
 pub fn main() -> Result<()> {
     let args: Vec<String> = env::args().collect();
-    let file = args.get(1).unwrap();
-    println!("{}", file);
-    let contents = fs::read_to_string(file)?;
-    println!("{}", contents);
+    let input_file = args.get(1).unwrap();
+    let output_file = args.get(2).unwrap();
+    let contents = fs::read_to_string(input_file)?;
 
     let pairs: Pairs<Rule> = Lc3Parser::parse(Rule::file, &contents)?;
     for pair in pairs {
-        //println!("{:?}", pair.as_rule());
         assert!(pair.as_rule() == Rule::file);
         println!("{}", format_pair(pair, 0, false));
     }
@@ -79,7 +77,7 @@ pub fn main() -> Result<()> {
             let mut file = OpenOptions::new()
                 .write(true)
                 .create(true)
-                .open("foo.out")
+                .open(output_file)
                 .unwrap();
 
             let data = emit_section(origin, content);
