@@ -1,8 +1,10 @@
 pub mod parser;
+pub mod emitter;
 
 #[macro_use]
 extern crate pest_derive;
 
+use std::borrow::Cow;
 use anyhow::{anyhow, bail, Result};
 use pest::iterators::Pair;
 
@@ -32,7 +34,7 @@ impl Register {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Modifiers {
     negative: bool,
     zero: bool,
@@ -54,7 +56,7 @@ impl Modifiers {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Opcode {
     Add,
     And,
@@ -136,7 +138,7 @@ impl Opcode {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AstNode {
     Line {
         label: Option<Box<AstNode>>,
@@ -157,7 +159,7 @@ pub enum AstNode {
     Label(String),
     StringLiteral(String),
     RegisterOperand(Register),
-    ImmediateOperand(u16),
+    ImmediateOperand(i16),
 }
 
 // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70

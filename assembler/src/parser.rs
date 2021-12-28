@@ -169,8 +169,8 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
             Rule::decimal_operand | Rule::hex_operand => {
                 let s = pair.as_str();
                 let value = match &s[..1] {
-                    "#" => i16::from_str_radix(&s[1..], 10).position(pos)? as u16,
-                    "x" => u16::from_str_radix(&s[1..], 16).position(pos)?,
+                    "#" => i16::from_str_radix(&s[1..], 10).position(pos)?,
+                    "x" => i16::from_str_radix(&s[1..], 16).position(pos)?,
                     _ => {
                         unreachable!("The parser should make sure we can't get anything else here")
                     }
