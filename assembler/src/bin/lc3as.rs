@@ -49,6 +49,7 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Vec<u16> {
 
 
     let mut data = vec![origin];
+    println!("{:?}", data);
     for e in emittables {
         data.append(&mut e.emit());
     }
@@ -83,7 +84,7 @@ pub fn main() -> Result<()> {
             let data = emit_section(origin, content);
             for word in data {
                 let low = (word & 0xff) as u8;
-                let high = (word & 0xff00) as u8;
+                let high = (word >> 8 & 0xff) as u8;
                 file.write(&[high, low]);
             }
         }

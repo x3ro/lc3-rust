@@ -29,7 +29,8 @@ impl ImmediateValue {
     }
 
     fn as_u16(&self) -> u16 {
-        self.value as u16
+        let mask = (1 << self.bits) - 1;
+        self.value as u16 & mask
     }
 
     fn range(bits: u8) -> Range<i32> {

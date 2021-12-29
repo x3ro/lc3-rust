@@ -2,6 +2,9 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+LC3AS_DIR="${SCRIPT_DIR}/../vendor/lc3tools"
+LC3AS="${LC3AS_DIR}/lc3as"
+
 cd "$SCRIPT_DIR"
 
 function error {
@@ -52,11 +55,53 @@ function run-single-testcase {
     fi
 }
 
+#function cmd_testcases {
+#    files="$(find testcases/simple -name '*.asm')"
+#    cargo build
+#    for file in ${files}; do
+#      run-single-testcase "${file}"
+#    done
+#}
+
+function task_assemble_tests {
+    for asm_file in $SCRIPT_DIR/testcases/simple/*.asm; do
+        ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
+    done
+}
+
 function cmd_testcases {
-    files="$(find testcases/simple -name '*.asm')"
+    #set -x
+    cd $SCRIPT_DIR
     cargo build
-    for file in ${files}; do
-      run-single-testcase "${file}"
+    git clean -fdx -e '*.asm' -- tests/ 2>&1 1>/dev/null
+
+    files=$SCRIPT_DIR/testcases/simple/*.asm
+    if [ ! -z "$1" ]; then
+      files="$1"
+    fi
+
+    task_assemble_tests
+    for asm_file in $files; do
+      $SCRIPT_DIR/../target/debug/lc3as $asm_file $SCRIPT_DIR/testcases/simple/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+    done
+
+    echo ""
+    notice "Starting test-run"
+
+    for asm_file in $files; do
+      local our_file="${asm_file}.out"
+      local their_file="$SCRIPT_DIR/testcases/simple/$(basename $asm_file .asm).obj"
+
+      local ours="$(md5 -q $our_file)"
+      local theirs="$(md5 -q $their_file)"
+
+      if [ "$ours" != "$theirs" ]; then
+        echo "Results differed for $asm_file"
+        echo "Our file: $our_file"
+        binwalk --hexdump "$our_file" "$their_file"
+      else
+        echo "✓ ${asm_file}"
+      fi
     done
 }
 
@@ -70,6 +115,6 @@ fi
 
 case "${command}" in
     test) cmd_test "$@" ;;
-    testcases) cmd_testcases ;;
+    testcases) cmd_testcases "$@" ;;
     *) cmd_usage
 esac
