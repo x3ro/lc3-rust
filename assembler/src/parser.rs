@@ -175,19 +175,20 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
             }
 
             Rule::register_operand => {
-                let node =
-                    AstNode::RegisterOperand(Register::from_str(pair.as_str()).position(pos)?);
+                let register = Register::from_str(pair.as_str()).position(pos)?;
+                let node = AstNode::RegisterOperand(register);
                 operands.push(node);
             }
 
             Rule::decimal_operand | Rule::hex_operand => {
                 let s = pair.as_str();
                 let value = parse_immediate(s).position(pos)?;
-                operands.push(AstNode::ImmediateOperand(value))
+                let node = AstNode::ImmediateOperand(value);
+                operands.push(node);
             }
 
             Rule::string => {
-                let value = pair.into_inner().next().unwrap();
+                let value = pair.into_inner().next().expect("Presence should be guaranteed by the grammar");
                 let node = AstNode::StringLiteral(value.as_str().into());
                 operands.push(node);
             }
@@ -202,7 +203,7 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
     }
 
     Ok(AstNode::Instruction {
-        opcode: opcode.unwrap(),
+        opcode: opcode.expect("Presence should be guaranteed by the grammar"),
         operands,
     })
 }
