@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
 use crate::{AstNode, Opcode, Register};
@@ -5,11 +6,18 @@ use crate::{AstNode, Opcode, Register};
 #[derive(Debug)]
 pub enum Emittable {
     AddImmediate { dr: Register, sr: Register, imm5: ImmediateValue },
+    AddRegister { dr: Register, sr1: Register, sr2: Register },
+    Ld { dr: Register, source: Label },
     Trap(u16),
 
     Fill(u16), // One specific value at the memory location
     Stringz(String), // A null-terminated string
     Zeroes(u16), // The given number of words as zeroes (reserved space)
+}
+
+#[derive(Debug)]
+pub struct Label {
+    name: String,
 }
 
 #[derive(Debug)]
@@ -62,8 +70,34 @@ impl Emittable {
                 }
             }
 
+            (Opcode::Add, [
+                AstNode::RegisterOperand(dr),
+                AstNode::RegisterOperand(sr1),
+                AstNode::RegisterOperand(sr2),
+            ]) => {
+                Emittable::AddRegister {
+                    dr: *dr,
+                    sr1: *sr1,
+                    sr2: *sr2,
+                }
+            }
+
+            (Opcode::Ld, [
+                AstNode::RegisterOperand(dr),
+                AstNode::Label(name)
+            ]) => {
+                Emittable::Ld {
+                    dr: *dr,
+                    source: Label { name: name.clone() }
+                }
+            }
+
             (Opcode::Halt, []) => {
                 Emittable::Trap(0x25)
+            },
+
+            (Opcode::Fill, [AstNode::ImmediateOperand(value)]) => {
+                Emittable::Fill(*value)
             },
 
             (Opcode::Stringz, [AstNode::StringLiteral(str)]) => {
@@ -74,7 +108,17 @@ impl Emittable {
         }
     }
 
-    pub fn emit(&self) -> Vec<u16> {
+    pub fn size(&self) -> usize {
+        use Emittable::*;
+
+        match self {
+            Stringz(str) => str.len() + 1,
+            Zeroes(len) => *len as usize,
+            _ => 1,
+        }
+    }
+
+    pub fn emit(&self, offset: u16, labels: &HashMap<String, u16>) -> Vec<u16> {
         use Emittable::*;
 
         println!("{:?}", self);
@@ -89,17 +133,46 @@ impl Emittable {
                 vec![result]
             },
 
+            AddRegister { dr, sr1, sr2 } => {
+                const OPCODE: u16 = 0b0001;
+                let mut result: u16 = OPCODE << 12;
+                result |= (*dr as u16) << 9;
+                result |= (*sr1 as u16) << 6;
+                result |= (*sr2 as u16);
+                vec![result]
+            },
+
+
+
+            Ld { dr, source } => {
+                const OPCODE: u16 = 0b0010;
+                let mut result: u16 = OPCODE << 12;
+                result |= (dr.to_owned() as u16) << 9;
+
+                let label_location = *labels.get(&source.name).unwrap();
+                let relative = ((label_location as i32) - (offset as i32 + 1)) as i16;
+                let v = ImmediateValue { value: relative, bits: 9 };
+                result |= v.as_u16();
+
+                vec![result]
+            }
+
             Trap(addr) => {
                 let mut result: u16 = 0b1111_0000_0000_0000;
                 result |= addr;
                 vec![result]
             },
 
+            Fill(value) => {
+                vec![*value]
+            }
+
             Stringz(str) => {
                 let mut data: Vec<_> = str.chars().map(|c| c as u16).collect();
                 data.push(0);
                 data
             }
+
             x => todo!("missing: {:?}", x),
         }
     }

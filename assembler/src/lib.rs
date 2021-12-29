@@ -159,7 +159,7 @@ pub enum AstNode {
     Label(String),
     StringLiteral(String),
     RegisterOperand(Register),
-    ImmediateOperand(i16),
+    ImmediateOperand(u16),
 }
 
 // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70

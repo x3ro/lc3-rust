@@ -1,4 +1,5 @@
 use std::{env, fs};
+use std::collections::HashMap;
 use std::fs::OpenOptions;
 
 use anyhow::Result;
@@ -26,32 +27,53 @@ pub fn to_emittable(node: &Box<AstNode>) -> Emittable {
     }
 }
 
+pub fn get_label_maybe(label: &Option<Box<AstNode>>) -> Option<String> {
+    if label.is_none() {
+        return None
+    }
+
+
+    let unboxed = label.as_ref().unwrap().as_ref();
+    match unboxed {
+        AstNode::Label(name) => Some(name.clone()),
+        x => unreachable!("{:?}", x),
+    }
+}
+
 pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Vec<u16> {
+    let mut labels = HashMap::new();
     let mut emittables = vec![];
 
+    // Pass 1
     for line in &content {
         match line {
-            AstNode::Line { instruction: Some(x), .. } => {
-                //let y = *x.clone();
-                emittables.push(to_emittable(x));
+            AstNode::Line { label, instruction: Some(x), .. } => {
+                let l = get_label_maybe(label);
+                emittables.push((l, to_emittable(x)));
             }
 
             x => unreachable!("{:?}", x)
         }
     }
+    //println!("{:#?}", &emittables);
 
+    // Pass 2: Collect the labels and their respective offsets
+    let mut offset = origin;
+    for (maybe_label, e) in &emittables {
+        if let Some(label) = maybe_label {
+            labels.insert(label.clone(), offset);
+        }
+        offset += e.size() as u16;
+    }
 
+    //println!("{:#?}", &labels);
 
-
-
-
-    println!("{:#?}", &emittables);
-
-
+    // Pass 3
+    let mut offset = origin;
     let mut data = vec![origin];
-    println!("{:?}", data);
-    for e in emittables {
-        data.append(&mut e.emit());
+    for (_, e) in emittables {
+        data.append(&mut e.emit(offset, &labels));
+        offset += e.size() as u16;
     }
 
     data
