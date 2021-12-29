@@ -80,8 +80,22 @@ fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
     Ok(ast)
 }
 
-fn parse_hex(value: &str) -> anyhow::Result<u16> {
-    u16::from_str_radix(value.trim_start_matches("x"), 16).context("")
+fn parse_immediate_hex(src: &str) -> anyhow::Result<u16> {
+    u16::from_str_radix(src, 16)
+        .context(format!("'{}' is not a valid hexadecimal number", src))
+}
+
+fn parse_immediate_decimal(src: &str) -> anyhow::Result<u16> {
+    i16::from_str_radix(src, 10).map(|x| x as u16)
+        .context(format!("'{}' is not a valid decimal number", src))
+}
+
+fn parse_immediate(src: &str) -> anyhow::Result<u16> {
+    match &src[..1] {
+        "x" => parse_immediate_hex(&src[1..]),
+        "#" => parse_immediate_decimal(&src[1..]),
+        x => unreachable!("Invalid immediate value prefix '{}'. This is a bug, since the grammar should prevent this.", x),
+    }
 }
 
 fn build_ast_from_section(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
@@ -96,7 +110,7 @@ fn build_ast_from_section(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition
         match pair.as_rule() {
             Rule::section_start => {
                 let origin_str = pair.into_inner().next().unwrap().as_str();
-                origin = parse_hex(origin_str).position(pos)?;
+                origin = parse_immediate(origin_str).position(pos)?;
             }
             Rule::line => content.push(build_ast_from_line(pair)?),
             Rule::section_end => { /* Ignore */ }
@@ -168,13 +182,7 @@ fn build_ast_from_instruction(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosi
 
             Rule::decimal_operand | Rule::hex_operand => {
                 let s = pair.as_str();
-                let value = match &s[..1] {
-                    "#" => i16::from_str_radix(&s[1..], 10).position(pos)? as u16,
-                    "x" => u16::from_str_radix(&s[1..], 16).position(pos)?,
-                    _ => {
-                        unreachable!("The parser should make sure we can't get anything else here")
-                    }
-                };
+                let value = parse_immediate(s).position(pos)?;
                 operands.push(AstNode::ImmediateOperand(value))
             }
 
