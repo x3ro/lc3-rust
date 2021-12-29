@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
+use anyhow::bail;
 use crate::{AstNode, Opcode, Register};
 
 #[derive(Debug)]
@@ -35,13 +36,13 @@ pub struct ImmediateValue {
 }
 
 impl ImmediateValue {
-    pub fn from_i16(value: i16, bits: u8) -> Self {
+    pub fn from_i16(value: i16, bits: u8) -> anyhow::Result<Self> {
         let range = Self::range(bits);
         if ! range.contains(&i32::from(value)) {
-            panic!("wat {}", value)
+            bail!("Immediate value {} is too large. {} bits are available, for a range of {}..{}.", value, bits, range.start, range.end - 1);
         }
 
-        ImmediateValue { value, bits }
+        Ok(ImmediateValue { value, bits })
     }
 
     fn as_u16(&self) -> u16 {
@@ -62,7 +63,7 @@ impl ImmediateValue {
 }
 
 impl Emittable {
-    pub fn from(opcode: Opcode, mut operands: Vec<AstNode>) -> Self {
+    pub fn from(opcode: Opcode, mut operands: Vec<AstNode>) -> anyhow::Result<Self> {
         use Emittable::*;
 
         match (opcode, operands.as_slice()) {
@@ -71,11 +72,11 @@ impl Emittable {
                 AstNode::RegisterOperand(sr),
                 AstNode::ImmediateOperand(imm),
             ]) => {
-                Emittable::AddImmediate {
+                Ok(Emittable::AddImmediate {
                     dr: *dr,
                     sr: *sr,
-                    imm5: ImmediateValue::from_i16(*imm as i16, 5)
-                }
+                    imm5: ImmediateValue::from_i16(*imm as i16, 5)?
+                })
             }
 
             (Opcode::Add, [
@@ -83,33 +84,33 @@ impl Emittable {
                 AstNode::RegisterOperand(sr1),
                 AstNode::RegisterOperand(sr2),
             ]) => {
-                Emittable::AddRegister {
+                Ok(Emittable::AddRegister {
                     dr: *dr,
                     sr1: *sr1,
                     sr2: *sr2,
-                }
+                })
             }
 
             (Opcode::Ld, [
                 AstNode::RegisterOperand(dr),
                 AstNode::Label(name)
             ]) => {
-                Emittable::Ld {
+                Ok(Emittable::Ld {
                     dr: *dr,
                     source: Label { name: name.clone() }
-                }
+                })
             }
 
             (Opcode::Halt, []) => {
-                Emittable::Trap(0x25)
+                Ok(Emittable::Trap(0x25))
             },
 
             (Opcode::Fill, [AstNode::ImmediateOperand(value)]) => {
-                Emittable::Fill(*value)
+                Ok(Emittable::Fill(*value))
             },
 
             (Opcode::Stringz, [AstNode::StringLiteral(str)]) => {
-                Emittable::Stringz(str.clone())
+                Ok(Emittable::Stringz(str.clone()))
             }
 
             x => todo!("Opcode missing: {:?}", x),

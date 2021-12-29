@@ -9,6 +9,7 @@ use anyhow::{anyhow, bail, Result};
 use pest::iterators::Pair;
 
 use num_traits::FromPrimitive;
+use pest::Position;
 
 use crate::parser::Rule;
 
@@ -139,22 +140,23 @@ impl Opcode {
 }
 
 #[derive(Debug, Clone)]
-pub enum AstNode {
+pub enum AstNode<'a> {
     Line {
-        label: Option<Box<AstNode>>,
-        instruction: Option<Box<AstNode>>,
+        label: Option<Box<AstNode<'a>>>,
+        instruction: Option<Box<AstNode<'a>>>,
         comment: Option<String>,
+        position: Position<'a>
     },
     Instruction {
         opcode: Opcode,
-        operands: Vec<AstNode>,
+        operands: Vec<AstNode<'a>>,
     },
     SectionScope {
         origin: u16,
-        content: Vec<AstNode>,
+        content: Vec<AstNode<'a>>,
     },
     FileScope {
-        content: Vec<AstNode>,
+        content: Vec<AstNode<'a>>,
     },
     Label(String),
     StringLiteral(String),

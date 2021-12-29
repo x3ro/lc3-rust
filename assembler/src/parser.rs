@@ -127,6 +127,7 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
     let mut label = None;
     let mut comment = None;
     let mut instruction = None;
+    let position = pair.as_span().start_pos().clone();
 
     for pair in pair.into_inner() {
         let pos = pair.as_span().start_pos().clone();
@@ -156,6 +157,7 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
         label,
         comment,
         instruction,
+        position
     })
 }
 
