@@ -20,6 +20,14 @@ pub struct Label {
     name: String,
 }
 
+impl Label {
+    pub fn relative_offset(&self, bits: u8, offset: u16, labels: &HashMap<String, u16>) -> ImmediateValue {
+        let label_location = *labels.get(&self.name).unwrap();
+        let relative = ((label_location as i32) - (offset as i32 + 1)) as i16;
+        ImmediateValue { value: relative, bits }
+    }
+}
+
 #[derive(Debug)]
 pub struct ImmediateValue {
     value: i16,
@@ -121,7 +129,6 @@ impl Emittable {
     pub fn emit(&self, offset: u16, labels: &HashMap<String, u16>) -> Vec<u16> {
         use Emittable::*;
 
-        println!("{:?}", self);
         match self {
             AddImmediate { dr, sr, imm5 } => {
                 const OPCODE: u16 = 0b0001;
@@ -142,18 +149,11 @@ impl Emittable {
                 vec![result]
             },
 
-
-
             Ld { dr, source } => {
                 const OPCODE: u16 = 0b0010;
                 let mut result: u16 = OPCODE << 12;
                 result |= (dr.to_owned() as u16) << 9;
-
-                let label_location = *labels.get(&source.name).unwrap();
-                let relative = ((label_location as i32) - (offset as i32 + 1)) as i16;
-                let v = ImmediateValue { value: relative, bits: 9 };
-                result |= v.as_u16();
-
+                result |= source.relative_offset(9, offset, labels).as_u16();
                 vec![result]
             }
 

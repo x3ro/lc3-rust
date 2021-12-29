@@ -14,14 +14,9 @@ use lc3as::*;
 use lc3as::emitter::Emittable;
 
 pub fn to_emittable(node: &Box<AstNode>) -> Emittable {
-    // TODO: Is there a way to pattern-match on this node without
-    //       cloning the node? It seems like pattern matching on a
-    //       boxed value isn't possible (?), but maybe I've missed
-    //       something.
-    let node = node.clone();
-    match *node {
+    match node.as_ref() {
         AstNode::Instruction { opcode, operands } => {
-            Emittable::from(opcode, operands)
+            Emittable::from(opcode.clone(), operands.clone())
         },
         x => unreachable!("{:?}", x)
     }
@@ -31,7 +26,6 @@ pub fn get_label_maybe(label: &Option<Box<AstNode>>) -> Option<String> {
     if label.is_none() {
         return None
     }
-
 
     let unboxed = label.as_ref().unwrap().as_ref();
     match unboxed {
