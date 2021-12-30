@@ -2,12 +2,18 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::ops::Range;
 use anyhow::bail;
-use crate::{AstNode, Opcode, Register};
+use crate::{AstNode, Modifiers, Opcode, Register};
 
 #[derive(Debug)]
 pub enum Emittable {
     AddImmediate { dr: Register, sr: Register, imm5: ImmediateValue },
     AddRegister { dr: Register, sr1: Register, sr2: Register },
+
+    AndRegister { dr: Register, sr1: Register, sr2: Register},
+    AndImmediate { dr: Register, sr: Register, imm5: ImmediateValue },
+
+    Br { modifiers: Modifiers, target: Label },
+
     Ld { dr: Register, source: Label },
     Trap(u16),
 
@@ -64,8 +70,6 @@ impl ImmediateValue {
 
 impl Emittable {
     pub fn from(opcode: Opcode, mut operands: Vec<AstNode>) -> anyhow::Result<Self> {
-        use Emittable::*;
-
         match (opcode, operands.as_slice()) {
             (Opcode::Add, [
                 AstNode::RegisterOperand(dr),
@@ -91,6 +95,39 @@ impl Emittable {
                 })
             }
 
+            (Opcode::And, [
+                AstNode::RegisterOperand(dr),
+                AstNode::RegisterOperand(sr1),
+                AstNode::RegisterOperand(sr2),
+            ]) => {
+                Ok(Emittable::AndRegister {
+                    dr: *dr,
+                    sr1: *sr1,
+                    sr2: *sr2,
+                })
+            }
+
+            (Opcode::And, [
+                AstNode::RegisterOperand(dr),
+                AstNode::RegisterOperand(sr),
+                AstNode::ImmediateOperand(imm),
+            ]) => {
+                Ok(Emittable::AndImmediate {
+                    dr: *dr,
+                    sr: *sr,
+                    imm5: ImmediateValue::from_i16(*imm as i16, 5)?
+                })
+            }
+
+            (Opcode::Br{ modifiers }, [
+                AstNode::Label(name)
+            ]) => {
+                Ok(Emittable::Br {
+                    modifiers,
+                    target: Label { name: name.clone() }
+                })
+            }
+
             (Opcode::Ld, [
                 AstNode::RegisterOperand(dr),
                 AstNode::Label(name)
@@ -105,11 +142,15 @@ impl Emittable {
                 Ok(Emittable::Trap(0x25))
             },
 
-            (Opcode::Fill, [AstNode::ImmediateOperand(value)]) => {
+            (Opcode::Fill, [
+                AstNode::ImmediateOperand(value)
+            ]) => {
                 Ok(Emittable::Fill(*value))
             },
 
-            (Opcode::Stringz, [AstNode::StringLiteral(str)]) => {
+            (Opcode::Stringz, [
+                AstNode::StringLiteral(str)
+            ]) => {
                 Ok(Emittable::Stringz(str.clone()))
             }
 
@@ -147,6 +188,25 @@ impl Emittable {
                 result |= (*dr as u16) << 9;
                 result |= (*sr1 as u16) << 6;
                 result |= (*sr2 as u16);
+                vec![result]
+            },
+
+            AndRegister { dr, sr1, sr2 } => {
+                const OPCODE: u16 = 0b0101;
+                let mut result: u16 = OPCODE << 12;
+                result |= (*dr as u16) << 9;
+                result |= (*sr1 as u16) << 6;
+                result |= (*sr2 as u16);
+                vec![result]
+            },
+
+            AndImmediate { dr, sr, imm5 } => {
+                const OPCODE: u16 = 0b0101;
+                let mut result: u16 = OPCODE << 12;
+                result |= (*dr as u16) << 9;
+                result |= (*sr as u16) << 6;
+                result |= 1 << 5;
+                result |= imm5.as_u16();
                 vec![result]
             },
 

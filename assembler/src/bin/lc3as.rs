@@ -2,7 +2,7 @@ use std::{env, fs};
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use pest::iterators::Pairs;
 use pest::Parser;
 
@@ -22,49 +22,71 @@ pub fn to_emittable(node: &Box<AstNode>) -> anyhow::Result<Emittable> {
     }
 }
 
-pub fn get_label_maybe(label: &Option<Box<AstNode>>) -> Option<String> {
-    if label.is_none() {
-        return None
-    }
-
-    let unboxed = label.as_ref().unwrap().as_ref();
-    match unboxed {
-        AstNode::Label(name) => Some(name.clone()),
+pub fn push_to_pending_labels(labels: &mut Vec<String>, node: &AstNode) {
+    match node {
+        AstNode::Label(name) => labels.push(name.clone()),
         x => unreachable!("{:?}", x),
-    }
+    };
 }
 
 pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, ErrorWithPosition> {
-    let mut labels = HashMap::new();
+    let mut offset = origin;
     let mut emittables = vec![];
+    let mut labels = HashMap::new();
 
-    // Pass 1
+    // These are the labels defined on empty lines which will be associated with
+    // the next instruction that occurs.
+    let mut pending_labels = vec![];
+
+    // Pass 1: Collect emittables and labels
     for line in &content {
         match line {
             AstNode::Line {
                 label,
                 instruction: Some(x),
-                position, ..
+                position,
+                ..
             } => {
-                let label = get_label_maybe(label);
+                if let Some(label) = label {
+                    push_to_pending_labels(&mut pending_labels, label);
+                }
+
+                if ! pending_labels.is_empty() {
+                    for label in &pending_labels {
+                        if let Some(_) = labels.insert(label.clone(), offset) {
+                            return Err(anyhow!("Re-defined label with name '{}'. Labels must only be used once.", label))
+                                .position(position.clone());
+                        }
+                    }
+                    pending_labels.clear();
+                }
+
                 let emittable = to_emittable(x).position(position.clone())?;
+                offset += emittable.size() as u16;
                 emittables.push((label, emittable));
+            }
+
+            AstNode::Line {
+                label: Some(label),
+                instruction: None,
+                ..
+            } => {
+                push_to_pending_labels(&mut pending_labels, label);
+            }
+
+            AstNode::Line {
+                label: None,
+                instruction: None,
+                ..
+            } => {
+                // We can safely ignore this case
             }
 
             x => unreachable!("{:?}", x)
         }
     }
 
-    // Pass 2: Collect the labels and their respective offsets
-    let mut offset = origin;
-    for (maybe_label, e) in &emittables {
-        if let Some(label) = maybe_label {
-            labels.insert(label.clone(), offset);
-        }
-        offset += e.size() as u16;
-    }
-
-    // Pass 3
+    // Pass 2 - Emit the bytecode now that we have label information
     let mut offset = origin;
     let mut data = vec![origin];
     for (_, e) in emittables {
