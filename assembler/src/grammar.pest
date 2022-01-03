@@ -51,6 +51,10 @@ section = { section_start ~ (line | ignored_line)* ~ section_end }
 
 file = {
     SOI ~
-    (ignored_line* ~ section ~ ignored_line*)* ~
+    (
+        (ignored_line | comment_line)* ~
+        section ~
+        (ignored_line | comment_line)*
+    )* ~
     EOI
 }
