@@ -2,7 +2,7 @@ use std::{env, fs};
 use std::collections::HashMap;
 use std::fs::OpenOptions;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, Result};
 use pest::iterators::Pairs;
 use pest::Parser;
 
@@ -133,7 +133,7 @@ pub fn main() -> Result<()> {
             for word in data {
                 let low = (word & 0xff) as u8;
                 let high = (word >> 8 & 0xff) as u8;
-                file.write(&[high, low]);
+                file.write(&[high, low])?;
             }
         }
 

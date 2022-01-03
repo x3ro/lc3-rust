@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::Write;
+
 use std::ops::Range;
 use anyhow::{bail, Context, Result};
 use crate::{AstNode, Modifiers, Opcode, Register};
@@ -93,7 +93,7 @@ impl ImmediateValue {
 }
 
 impl Emittable {
-    pub fn from(opcode: Opcode, mut operands: Vec<AstNode>) -> anyhow::Result<Self> {
+    pub fn from(opcode: Opcode, operands: Vec<AstNode>) -> anyhow::Result<Self> {
         match (opcode, operands.as_slice()) {
             (Opcode::Add, [
                 AstNode::RegisterOperand(dr),
@@ -367,7 +367,7 @@ impl Emittable {
                 let mut result: u16 = OPCODE << 12;
                 result |= (*dr as u16) << 9;
                 result |= (*sr1 as u16) << 6;
-                result |= (*sr2 as u16);
+                result |= *sr2 as u16;
                 Ok(vec![result])
             }
 
@@ -376,7 +376,7 @@ impl Emittable {
                 let mut result: u16 = OPCODE << 12;
                 result |= (*dr as u16) << 9;
                 result |= (*sr1 as u16) << 6;
-                result |= (*sr2 as u16);
+                result |= *sr2 as u16;
                 Ok(vec![result])
             }
 
@@ -518,8 +518,6 @@ impl Emittable {
                 let data: Vec<u16> = vec![0; usize::from(*amount)];
                 Ok(data)
             }
-
-            x => todo!("missing: {:?}", x),
         }
     }
 }

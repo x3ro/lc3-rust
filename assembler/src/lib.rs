@@ -4,7 +4,7 @@ pub mod emitter;
 #[macro_use]
 extern crate pest_derive;
 
-use std::borrow::Cow;
+
 use anyhow::{anyhow, bail, Result};
 use pest::iterators::Pair;
 

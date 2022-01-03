@@ -65,8 +65,6 @@ fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
     let mut ast = vec![];
 
     for pair in file.into_inner() {
-        let pos = pair.as_span().start_pos().clone();
-
         match pair.as_rule() {
             Rule::comment => { /* We ignore top-level comments */ }
             Rule::section => {
@@ -130,8 +128,6 @@ fn build_ast_from_line(pair: Pair<Rule>) -> Result<AstNode, ErrorWithPosition> {
     let position = pair.as_span().start_pos().clone();
 
     for pair in pair.into_inner() {
-        let pos = pair.as_span().start_pos().clone();
-
         match pair.as_rule() {
             Rule::instruction => {
                 let result = build_ast_from_instruction(pair)?;
