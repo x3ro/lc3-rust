@@ -6,7 +6,7 @@ pseudo_opcode = @{ (^".FILL" | ^".STRINGZ" | ^".BLKW") ~ &(WHITESPACE | NEWLINE)
 trap_alias = @{ (^"GETC" | ^"OUT" | ^"PUTSP" | ^"PUTS" | ^"IN" | ^"HALT") ~ &(WHITESPACE | NEWLINE) }
 
 comment = { ";" ~ (!NEWLINE ~ ANY)* }
-comment_line = _{ comment ~ NEWLINE }
+comment_line = _{ comment ~ (NEWLINE | &EOI) }
 label = @{ !("x" | "#") ~ (ASCII_ALPHANUMERIC | "_")+ }
 
 string = ${ "\"" ~ inner ~ "\"" }
@@ -17,11 +17,11 @@ char = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-SEPARATOR = _{ WHITESPACE | NEWLINE | "," }
+SEPARATOR = @{ WHITESPACE | NEWLINE | "," }
 
-register_operand = @{ "R" ~ ASCII_DIGIT+ ~ &SEPARATOR}
-hex_operand = @{ "x" ~ ASCII_HEX_DIGIT{1,4} ~ &SEPARATOR}
-decimal_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ ~ &SEPARATOR}
+register_operand = @{ "R" ~ ASCII_DIGIT+ ~ &SEPARATOR }
+hex_operand = @{ "x" ~ ASCII_HEX_DIGIT{1,4} ~ &SEPARATOR }
+decimal_operand = @{ "#" ~ "-"? ~ ASCII_DIGIT+ ~ &SEPARATOR }
 immediate_operand = _{ hex_operand | decimal_operand | string }
 operand = _{ register_operand | immediate_operand | label }
 operands = _{ operand? ~ ("," ~ operand)* }
@@ -52,9 +52,9 @@ section = { section_start ~ (line | ignored_line)* ~ section_end }
 file = {
     SOI ~
     (
-        (ignored_line | comment_line)* ~
+        (comment_line | ignored_line)* ~
         section ~
-        (ignored_line | comment_line)*
+        (comment_line | ignored_line)*
     )* ~
     EOI
 }

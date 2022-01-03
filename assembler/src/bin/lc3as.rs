@@ -1,15 +1,15 @@
 use std::{env, fs};
-use std::collections::HashMap;
+
 use std::fs::OpenOptions;
 
-use anyhow::{anyhow, Result};
-use pest::iterators::Pairs;
-use pest::Parser;
+use anyhow::{Result};
+
+
 
 use std::io::Write;
 
 use lc3as::*;
-use lc3as::emittable::Emittable;
+
 
 
 

@@ -1,9 +1,9 @@
-use std::fmt;
+
 
 use anyhow::{anyhow, Context};
-use pest::error::{Error, ErrorVariant};
+
 use pest::iterators::{Pair, Pairs};
-use pest::{Parser, Position};
+use pest::{Parser};
 
 use crate::{AstNode, Opcode, Register};
 use crate::errors::{ErrorWithPosition, PositionContext};

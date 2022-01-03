@@ -7,14 +7,14 @@ mod errors;
 extern crate pest_derive;
 
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, bail};
 use pest::iterators::Pair;
 
 use num_traits::FromPrimitive;
 use pest::Position;
 use crate::emitter::emit_section;
 
-use crate::errors::ErrorWithPosition;
+
 use crate::parser::{parse, Rule};
 
 #[derive(Debug, PartialEq, Copy, Clone, num_derive::FromPrimitive)]

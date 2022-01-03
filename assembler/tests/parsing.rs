@@ -37,6 +37,21 @@ macro_rules! assert_rule {
     };
 }
 
+// Macros taken from https://github.com/sunng87/handlebars-rust/blob/d8d9c6e25f49905fcfa1ec0c1afb32d95495cdc7/src/grammar.rs#L33
+macro_rules! assert_rule_trimmed {
+    ($rule:expr, $in:expr) => {
+        assert_eq!(
+            Lc3Parser::parse($rule, $in)
+                .unwrap()
+                .last()
+                .unwrap()
+                .as_span()
+                .end(),
+            $in.trim().len()
+        );
+    };
+}
+
 macro_rules! assert_not_rule {
     ($rule:expr, $in:expr) => {
         assert!(
@@ -47,7 +62,7 @@ macro_rules! assert_not_rule {
                     .unwrap()
                     .as_span()
                     .end()
-                    != $in.len()
+                    == 0
         );
     };
 }
@@ -66,16 +81,15 @@ macro_rules! assert_rule_match_ast {
 #[test]
 #[wasm_bindgen_test]
 fn test_lex_immediate() {
-    assert_rule!(Rule::immediate_operand, "#12");
-    assert_rule!(Rule::immediate_operand, "#-24");
-    assert_not_rule!(Rule::immediate_operand, "#-24.0");
+    assert_rule_trimmed!(Rule::immediate_operand, "#12 ");
+    assert_rule_trimmed!(Rule::immediate_operand, "#-24 ");
 }
 
 #[test]
 #[wasm_bindgen_test]
 fn test_lex_instruction() {
-    assert_rule!(Rule::instruction, "ADD R0, R0, #1");
-    assert_rule!(Rule::instruction, "ADD #1, #1");
+    assert_rule_trimmed!(Rule::instruction, "ADD R0, R0, #1 ");
+    assert_rule_trimmed!(Rule::instruction, "ADD #1, #1 ");
     assert_rule!(Rule::instruction, "LDI R0,OS_MCR");
     assert_rule!(Rule::instruction, "BRnzp SOME_LABEL");
 }
@@ -98,18 +112,6 @@ line
     - decimal_operand: "#1"
     - hex_operand: "x123"
   - comment: ";;;; nice label"
-"###
-    );
-}
-
-fn test_foo() {
-    assert_rule_match_ast!(
-        Rule::line,
-        "HALT",
-        r###"
-line
-  - instruction
-    - trap_alias: "HALT"
 "###
     );
 }
