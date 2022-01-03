@@ -49,11 +49,25 @@ impl Modifiers {
             bail!("Invalid modifiers")
         }
 
-        Ok(Modifiers {
-            negative: s.contains("n"),
-            zero: s.contains("z"),
-            positive: s.contains("p"),
-        })
+        let negative = s.contains("n");
+        let zero = s.contains("z");
+        let positive = s.contains("p");
+
+        if !negative && !zero && !positive {
+            // If there aren't any modifiers, the branching is unconditional,
+            // which means we branch in all of the possible cases.
+            Ok(Modifiers {
+                negative: true,
+                zero: true,
+                positive: true,
+            })
+        } else {
+            Ok(Modifiers {
+                negative,
+                zero,
+                positive,
+            })
+        }
     }
 }
 
@@ -69,6 +83,7 @@ pub enum Opcode {
     Ldi,
     Ldr,
     Lea,
+    Nop,
     Not,
     Ret,
     Rti,
@@ -115,6 +130,7 @@ impl Opcode {
             "ldi" => Ok(Opcode::Ldi),
             "ldr" => Ok(Opcode::Ldr),
             "lea" => Ok(Opcode::Lea),
+            "nop" => Ok(Opcode::Nop),
             "not" => Ok(Opcode::Not),
             "ret" => Ok(Opcode::Ret),
             "rti" => Ok(Opcode::Rti),

@@ -63,7 +63,7 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, Erro
 
                 let emittable = to_emittable(x).position(position.clone())?;
                 offset += emittable.size() as u16;
-                emittables.push((label, emittable));
+                emittables.push((position, emittable));
             }
 
             AstNode::Line {
@@ -79,7 +79,7 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, Erro
                 instruction: None,
                 ..
             } => {
-                // We can safely ignore this case
+                // We can safely ignore this case (no executable information or label)
             }
 
             x => unreachable!("{:?}", x)
@@ -89,8 +89,9 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, Erro
     // Pass 2 - Emit the bytecode now that we have label information
     let mut offset = origin;
     let mut data = vec![origin];
-    for (_, e) in emittables {
-        data.append(&mut e.emit(offset, &labels));
+    for (position, e) in emittables {
+        let mut bytecode = e.emit(offset, &labels).position(position.clone())?;
+        data.append(&mut bytecode);
         offset += e.size() as u16;
     }
 
@@ -112,7 +113,7 @@ pub fn main() -> Result<()> {
     let pairs: Pairs<Rule> = Lc3Parser::parse(Rule::file, &contents)?;
     for pair in pairs {
         assert!(pair.as_rule() == Rule::file);
-        println!("{}", format_pair(pair, 0, false));
+        //println!("{}", format_pair(pair, 0, false));
     }
 
     let mut ast = parse(&contents)?;
@@ -124,6 +125,7 @@ pub fn main() -> Result<()> {
             let mut file = OpenOptions::new()
                 .write(true)
                 .create(true)
+                .truncate(true)
                 .open(output_file)
                 .unwrap();
 

@@ -1,9 +1,9 @@
 WHITESPACE = _{ " " | "\t" }
 
 modifiers = @{"n" | "z" | "p"}
-opcode = @{ ("ADD" | "AND" | ("BR" ~ modifiers* ) | "JMP" | "JSRR" | "JSR" | "LDI" | "LDR" | "LD" | "LEA" | "NOT" | "RET" | "RTI" | "STI" | "STR" | "ST" | "TRAP") ~ &(WHITESPACE | NEWLINE) }
-pseudo_opcode = @{ (".FILL" | ".STRINGZ" | ".BLKW") ~ &(WHITESPACE | NEWLINE) }
-trap_alias = @{ ("GETC" | "OUT" | "PUTS" | "IN" | "PUTSP" | "HALT") ~ &(WHITESPACE | NEWLINE) }
+opcode = @{ (^"ADD" | ^"AND" | (^"BR" ~ modifiers* ) | ^"JMP" | ^"JSRR" | ^"JSR" | ^"LDI" | ^"LDR" | ^"LD" | ^"LEA" | ^"NOP" | ^"NOT" | ^"RET" | ^"RTI" | ^"STI" | ^"STR" | ^"ST" | ^"TRAP") ~ &(WHITESPACE | NEWLINE) }
+pseudo_opcode = @{ (^".FILL" | ^".STRINGZ" | ^".BLKW") ~ &(WHITESPACE | NEWLINE) }
+trap_alias = @{ (^"GETC" | ^"OUT" | ^"PUTSP" | ^"PUTS" | ^"IN" | ^"HALT") ~ &(WHITESPACE | NEWLINE) }
 
 comment = { ";" ~ (!NEWLINE ~ ANY)* }
 comment_line = _{ comment ~ NEWLINE }
