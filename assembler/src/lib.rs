@@ -1,17 +1,21 @@
 pub mod parser;
-pub mod emitter;
+pub mod emittable;
+mod emitter;
+mod errors;
 
 #[macro_use]
 extern crate pest_derive;
 
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Context};
 use pest::iterators::Pair;
 
 use num_traits::FromPrimitive;
 use pest::Position;
+use crate::emitter::emit_section;
 
-use crate::parser::Rule;
+use crate::errors::ErrorWithPosition;
+use crate::parser::{parse, Rule};
 
 #[derive(Debug, PartialEq, Copy, Clone, num_derive::FromPrimitive)]
 pub enum Register {
@@ -26,12 +30,12 @@ pub enum Register {
 }
 
 impl Register {
-    pub fn from_str(str: &str) -> Result<Self> {
+    pub fn from_str(str: &str) -> anyhow::Result<Self> {
         let s = str.to_lowercase();
         let s = s.trim_start_matches("r");
         let n = u8::from_str_radix(s, 10)?;
-        let opt: Option<Register> = Register::from_u8(n);
-        opt.ok_or(anyhow!("Unknown register '{}'", str))
+        Register::from_u8(n)
+            .ok_or(anyhow!("Unknown register '{}'", str))
     }
 }
 
@@ -43,7 +47,7 @@ pub struct Modifiers {
 }
 
 impl Modifiers {
-    fn from_str(s: &str) -> Result<Self> {
+    fn from_str(s: &str) -> anyhow::Result<Self> {
         let invalid = s.contains(|c| c != 'n' && c != 'z' && c != 'p');
         if invalid {
             bail!("Invalid modifiers")
@@ -107,7 +111,7 @@ pub enum Opcode {
 }
 
 impl Opcode {
-    pub fn from(value: &str) -> Result<Self> {
+    pub fn from(value: &str) -> anyhow::Result<Self> {
         let value = value.to_lowercase();
 
         // The BR opcode is the only one that supports
@@ -179,6 +183,25 @@ pub enum AstNode<'a> {
     RegisterOperand(Register),
     ImmediateOperand(u16),
 }
+
+
+pub fn assemble(source: &str) -> anyhow::Result<Vec<u16>> {
+    let mut ast = parse(source)?;
+    // TODO: This assertion could be reflected in the grammar
+    assert_eq!(ast.len(), 1, "More than one ORIGIN per file doesn't make sense");
+
+    let res = match ast.remove(0) {
+        AstNode::SectionScope { origin, content } => {
+            emit_section(origin, content)
+        }
+        x => unreachable!("Assembler bug: Unexpected top-level AST node. {:?}", x)
+    };
+    
+    res.map_err(|e| {
+        anyhow!("{}", e)
+    })
+}
+
 
 // Taken from https://github.com/pest-parser/site/blob/221c5b1dd84e15752680cc129fa6138196f2a24e/src/main.rs#L70
 pub fn format_pair(pair: Pair<Rule>, indent_level: usize, is_newline: bool) -> String {

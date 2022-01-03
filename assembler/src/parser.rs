@@ -6,44 +6,7 @@ use pest::iterators::{Pair, Pairs};
 use pest::{Parser, Position};
 
 use crate::{AstNode, Opcode, Register};
-
-#[derive(Debug, Clone)]
-pub struct ErrorWithPosition<'a> {
-    msg: String,
-    pos: Position<'a>,
-}
-
-impl std::error::Error for ErrorWithPosition<'_> {}
-
-impl<'a> fmt::Display for ErrorWithPosition<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let err: Error<()> = Error::new_from_pos(
-            ErrorVariant::CustomError {
-                message: self.msg.clone(),
-            },
-            self.pos.clone(),
-        );
-
-        write!(f, "{}", err)
-    }
-}
-
-pub trait PositionContext<'a, T, E> {
-    /// Wrap the error value with additional context.
-    fn position(self, pos: Position<'a>) -> Result<T, ErrorWithPosition<'a>>;
-}
-
-impl<'a, T, E: std::fmt::Display> PositionContext<'a, T, E> for Result<T, E> {
-    fn position(self, pos: Position<'a>) -> Result<T, ErrorWithPosition<'a>> {
-        match self {
-            Ok(x) => Ok(x),
-            Err(err) => Err(ErrorWithPosition {
-                msg: format!("{}", err),
-                pos,
-            }),
-        }
-    }
-}
+use crate::errors::{ErrorWithPosition, PositionContext};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -55,10 +18,9 @@ pub fn parse(source: &str) -> anyhow::Result<Vec<AstNode>> {
     let file = pairs.next().unwrap();
     assert_eq!(file.as_rule(), Rule::file);
 
-    let yay = traverse(file).map_err(|e| {
+    traverse(file).map_err(|e| {
         anyhow!("{}", e)
-    })?;
-    Ok(yay)
+    })
 }
 
 fn traverse(file: Pair<Rule>) -> Result<Vec<AstNode>, ErrorWithPosition> {
