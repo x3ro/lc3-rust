@@ -2,8 +2,6 @@
 set -e
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
-LC3AS_DIR="${SCRIPT_DIR}/../vendor/lc3tools"
-LC3AS="${LC3AS_DIR}/lc3as"
 
 function error {
     echo -e >&2 "\033[31m${1}\033[0m";
@@ -21,26 +19,11 @@ function ensure_env {
     command -v cargo >/dev/null 2>&1 || error "Please install Cargo (Rust's package manager)"
 }
 
-function ensure_lc3_tools {
-    if [ ! -f "${LC3AS}" ]; then
-        notice "LC3 assembler not found, trying to build"
-        (cd "${LC3AS_DIR}" && ./configure && make)
-    fi
-}
-
-function cmd_assemble_tests {
-    for asm_file in $(find $SCRIPT_DIR/testcases -name "*.asm"); do
-        ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
-    done
-}
-
 function cmd_test {
-    cmd_assemble_tests
     RUST_LOG="" cargo test "$@"
 }
 
 function cmd_os {
-  cmd_assemble_tests
   cargo run -- --program testcases/complex/os.obj --entry-point 0x200
 }
 
@@ -70,7 +53,6 @@ function cmd_usage {
 }
 
 ensure_env
-ensure_lc3_tools
 
 command=""
 if (( $# > 0 )); then

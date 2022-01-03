@@ -328,6 +328,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "custom_debug",
+ "lc3as",
  "log",
  "num-derive",
  "num-traits",

@@ -57,7 +57,7 @@ function run-single-testcase {
 }
 
 function task_assemble_tests {
-    for asm_file in $SCRIPT_DIR/testcases/simple/*.asm; do
+    for asm_file in $SCRIPT_DIR/../testcases/assembly/*.asm; do
         ${LC3AS} "${asm_file}" 2>&1 1>/dev/null || error "Failed to assemble $(basename ${asm_file})!"
     done
 }
@@ -68,14 +68,14 @@ function cmd_testcases {
     cargo build
     git clean -fdx -e '*.asm' -- tests/ 2>&1 1>/dev/null
 
-    files=$SCRIPT_DIR/testcases/simple/*.asm
+    files=$SCRIPT_DIR/../testcases/assembly/*.asm
     if [ ! -z "$1" ]; then
       files="$1"
     fi
 
     task_assemble_tests
     for asm_file in $files; do
-      $SCRIPT_DIR/../target/debug/lc3as $asm_file $SCRIPT_DIR/testcases/simple/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
+      $SCRIPT_DIR/../target/debug/lc3as $asm_file $SCRIPT_DIR/../testcases/assembly/$(basename "$asm_file").out || error "Couldn't compile $asm_file"
     done
 
     echo ""
@@ -83,7 +83,7 @@ function cmd_testcases {
 
     for asm_file in $files; do
       local our_file="${asm_file}.out"
-      local their_file="$SCRIPT_DIR/testcases/simple/$(basename $asm_file .asm).obj"
+      local their_file="$SCRIPT_DIR/../testcases/assembly/$(basename $asm_file .asm).obj"
 
       local ours="$(md5 -q $our_file)"
       local theirs="$(md5 -q $their_file)"

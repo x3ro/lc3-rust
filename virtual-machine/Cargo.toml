@@ -11,5 +11,8 @@ anyhow = "1.0.51"
 custom_debug = "0.5.0"
 log = "0.4"
 
+lc3as = { path = "../assembler" }
+
 [dev-dependencies]
 pretty_env_logger = "0.4"
+

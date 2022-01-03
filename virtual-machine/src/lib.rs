@@ -50,6 +50,17 @@ pub fn run(state: &mut VmState) -> Result<()> {
     Ok(())
 }
 
+pub fn load_words(data: &Vec<u16>, state: &mut VmState) -> Result<u16> {
+    // The first two bytes of the object file indicate where to load the program
+    let orig = data[0];
+    let program = &data[1..];
+
+    let memory_area = (orig as usize)..((orig as usize) + program.len());
+    state.memory_mut()[memory_area].copy_from_slice(program);
+
+    Ok(orig)
+}
+
 pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<u16> {
     // LC3 uses 16-bit words, so we need to combine two bytes into one word of memory
     let even = bytes.iter().step_by(2);
@@ -60,12 +71,5 @@ pub fn load_object(bytes: &[u8], state: &mut VmState) -> Result<u16> {
         .map(|(&high, &low)| (high as u16) << 8 | low as u16)
         .collect();
 
-    // The first two bytes of the object file indicate where to load the program
-    let orig = data[0];
-    let program = &data[1..];
-
-    let memory_area = (orig as usize)..((orig as usize) + program.len());
-    state.memory_mut()[memory_area].copy_from_slice(program);
-
-    Ok(orig)
+    load_words(&data, state)
 }
