@@ -52,21 +52,6 @@ macro_rules! assert_rule_trimmed {
     };
 }
 
-macro_rules! assert_not_rule {
-    ($rule:expr, $in:expr) => {
-        assert!(
-            Lc3Parser::parse($rule, $in).is_err()
-                || Lc3Parser::parse($rule, $in)
-                    .unwrap()
-                    .last()
-                    .unwrap()
-                    .as_span()
-                    .end()
-                    == 0
-        );
-    };
-}
-
 macro_rules! assert_rule_match_ast {
     ($rule:expr, $in:expr, $ex:expr) => {
         let res = Lc3Parser::parse($rule, $in);

@@ -25,6 +25,7 @@ function ensure_env {
 function cmd_test {
     cargo test
     wasm-pack test --node
+    cmd_testcases
     echo "✓ Done"
 }
 
@@ -54,14 +55,6 @@ function run-single-testcase {
         echo "❌"
     fi
 }
-
-#function cmd_testcases {
-#    files="$(find testcases/simple -name '*.asm')"
-#    cargo build
-#    for file in ${files}; do
-#      run-single-testcase "${file}"
-#    done
-#}
 
 function task_assemble_tests {
     for asm_file in $SCRIPT_DIR/testcases/simple/*.asm; do
