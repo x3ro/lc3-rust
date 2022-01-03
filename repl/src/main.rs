@@ -1,5 +1,6 @@
 mod peripherals;
 
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -26,7 +27,7 @@ use tui::Terminal;
 use crate::peripherals::{TerminalDisplay, TerminalKeyboard};
 use lc3vm::peripheral::Peripheral;
 
-use lc3vm::{load_object, tick};
+use lc3vm::{load_object, load_words, tick};
 
 use lc3vm::parser::Instruction;
 use lc3vm::state::{ConditionFlags, Registers, VmState, MEM_SIZE};
@@ -52,6 +53,16 @@ const STYLE_WARN: Style = Style {
     sub_modifier: Modifier::empty(),
 };
 
+fn load_file(filename: &str, vm_state: &mut VmState, repl_state: &mut ReplState) -> Result<u16> {
+    let orig = if filename.ends_with(".asm") {
+        load_asm_file(filename, vm_state)?
+    } else {
+        load_object_file(filename, vm_state)?
+    };
+    repl_state.push_message(format!("Loaded '{}' at '0x{:x}'", filename, orig), STYLE_INFO);
+    Ok(orig)
+}
+
 fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     let mut f = File::open(filename)?;
 
@@ -59,6 +70,15 @@ fn load_object_file(filename: &str, state: &mut VmState) -> Result<u16> {
     f.read_to_end(&mut buffer)?;
 
     load_object(buffer.as_slice(), state)
+}
+
+fn load_asm_file(filename: &str, state: &mut VmState) -> Result<u16> {
+    let contents = fs::read_to_string(filename)
+        .expect("Something went wrong reading the file");
+
+    let data = lc3as::assemble(contents.as_str())?;
+
+    load_words(&data, state)
 }
 
 struct ReplState<'a> {
@@ -178,14 +198,7 @@ fn parse_command_step(args: &[&str]) -> Result<Cmd> {
 fn eval_line(state: &mut VmState, repl_state: &mut ReplState, cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Load { path } => {
-            let orig = load_object_file(path.as_str(), state)
-                .with_context(|| format!("Failed to read from path '{}'", path))?;
-
-            println!(
-                "{}Loaded file into memory at origin address 0x{:x}",
-                color::Fg(color::Blue),
-                orig
-            );
+            load_file(path.as_str(), state, repl_state);
         }
 
         Cmd::Step { count } => {
@@ -525,8 +538,7 @@ fn main() -> Result<()> {
     repl_state.peripherals.push(&display);
 
     for p in &parameters.programs {
-        let orig = load_object_file(p, &mut vm_state)?;
-        repl_state.push_message(format!("Loaded '{}' at '0x{:x}'", p, orig), STYLE_INFO);
+        load_file(p, &mut vm_state, &mut repl_state);
     }
 
     if parameters.programs.is_empty() {

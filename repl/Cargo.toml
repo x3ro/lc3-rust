@@ -17,3 +17,4 @@ log = "0.4"
 anyhow = "1.0.51"
 
 lc3vm = { path = "../virtual-machine" }
+lc3as = { path = "../assembler" }

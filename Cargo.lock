@@ -607,6 +607,7 @@ dependencies = [
  "anyhow",
  "clap",
  "ctrlc",
+ "lc3as",
  "lc3vm",
  "log",
  "pretty_env_logger",
