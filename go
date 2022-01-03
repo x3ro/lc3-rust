@@ -24,18 +24,17 @@ function cmd_test {
 }
 
 function cmd_os {
-  cargo run -- --program testcases/complex/os.obj --entry-point 0x200
+  cargo run --bin=repl -- --program testcases/assembly/os.asm --entrypoint 0x200 "$@"
 }
 
 function cmd_bench {
-  cmd_assemble_tests
   cargo build --release
 
   export RUST_LOG=${RUST_LOG:-info}
   if [[ "$1" == "flamegraph" ]]; then
-    sudo flamegraph ../target/release/lc3vm --program testcases/complex/divisible.obj --entry-point 0x3000
+    sudo flamegraph target/release/repl --program testcases/assembly/divisible.asm --entrypoint 0x3000
   else
-    ../target/release/lc3vm --program testcases/complex/divisible.obj --entry-point 0x3000
+    target/release/repl --program testcases/assembly/divisible.asm --entrypoint 0x3000
   fi
 }
 
@@ -43,8 +42,7 @@ function cmd_usage {
     echo "
 ./go [cmd]
 
-  test              Run all tests
-  assemble-tests    Assemble all testcases (this does not run the tests)
+  bench             TODO
   os                Runs the 'LC3 OS' test case in interactive mode
 
     ";
@@ -59,8 +57,6 @@ if (( $# > 0 )); then
 fi
 
 case "${command}" in
-    test) cmd_test "$@" ;;
-    assemble-tests) cmd_assemble_tests "$@" ;;
     bench) cmd_bench "$@" ;;
     os)  cmd_os "$@" ;;
     *) cmd_usage

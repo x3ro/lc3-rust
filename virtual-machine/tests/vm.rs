@@ -30,7 +30,7 @@ fn assert_cc_zero(state: &mut VmState) {
     );
     assert_eq!(
         state.registers()[Registers::PSR] & (ConditionFlags::Zero as u16),
-        ConditionFlags::Zero as ./u16
+        ConditionFlags::Zero as u16
     );
     assert_eq!(
         state.registers()[Registers::PSR] & (ConditionFlags::Negative as u16),

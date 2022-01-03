@@ -83,7 +83,6 @@ fn load_asm_file(filename: &str, state: &mut VmState) -> Result<u16> {
 
 struct ReplState<'a> {
     pause_after_tick: Arc<AtomicBool>,
-    peripherals: Vec<&'a dyn Peripheral>,
     messages: Vec<Span<'a>>,
     source_context: u16,
     ticks_executed: u64,
@@ -94,7 +93,6 @@ impl<'a> ReplState<'a> {
     fn from_params(params: &ReplParameters) -> Self {
         ReplState {
             pause_after_tick: spawn_ctrlc_listener(),
-            peripherals: vec![],
             messages: vec![],
             source_context: 3,
             ticks_executed: 0,
@@ -535,7 +533,7 @@ fn main() -> Result<()> {
 
     let mut vm_state = VmState::new();
     let display = TerminalDisplay {};
-    repl_state.peripherals.push(&display);
+    vm_state.peripherals.push(&display);
 
     for p in &parameters.programs {
         load_file(p, &mut vm_state, &mut repl_state);
@@ -564,7 +562,7 @@ fn main() -> Result<()> {
         loop_interactive(&mut vm_state, &mut repl_state)?;
     } else {
         let keyboard = TerminalKeyboard::new();
-        repl_state.peripherals.push(&keyboard);
+        vm_state.peripherals.push(&keyboard);
 
         let elapsed = loop_non_interactive(&mut vm_state, &mut repl_state)?;
         let mhz = repl_state.ticks_executed as f64 / elapsed.as_secs() as f64 / 1_000_000.0;
