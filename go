@@ -42,6 +42,7 @@ function cmd_usage {
     echo "
 ./go [cmd]
 
+  test              TODO
   bench             TODO
   os                Runs the 'LC3 OS' test case in interactive mode
 
@@ -57,6 +58,7 @@ if (( $# > 0 )); then
 fi
 
 case "${command}" in
+    test) cmd_test "$@" ;;
     bench) cmd_bench "$@" ;;
     os)  cmd_os "$@" ;;
     *) cmd_usage
