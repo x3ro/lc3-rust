@@ -72,16 +72,16 @@ macro_rules! prepare_test {
         let _ = pretty_env_logger::try_init();
         let mut state = VmState::new();
         let source = include_str!($file);
-        let data = lc3as::assemble(source).unwrap();
-        load_words(&data, &mut state).unwrap();
+        let assembly = lc3as::assemble(source).unwrap();
+        load_words(assembly.data(), &mut state).unwrap();
         state
     }};
     ($file:expr, $entrypoint:expr) => {{
         let _ = pretty_env_logger::try_init();
         let mut state = VmState::new();
         let source = include_str!($file);
-        let data = lc3as::assemble(source).unwrap();
-        load_words(&data, &mut state).unwrap();
+        let assembly = lc3as::assemble(source).unwrap();
+        load_words(assembly.data(), &mut state).unwrap();
         state.set_pc($entrypoint);
         state
     }};

@@ -7,6 +7,7 @@ use anyhow::{Result};
 
 
 use std::io::Write;
+use pest::Position;
 
 use lc3as::*;
 
@@ -31,7 +32,14 @@ pub fn main() -> Result<()> {
     //     println!("{}", format_pair(pair, 0, false));
     // }
 
-    let bytecode = assemble(&contents)?;
+    let assembly = assemble(&contents)?;
+
+    // for (offset, loc) in assembly.source_map().iter() {
+    //     let pos = Position::new(&contents, *loc).unwrap();
+    //     println!("0x{:x} -> {}", offset, pos.line_of());
+    // }
+
+    let bytecode = assembly.data();
 
     let mut file = OpenOptions::new()
         .write(true)

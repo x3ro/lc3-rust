@@ -14,7 +14,7 @@ use pest::iterators::Pair;
 
 use num_traits::FromPrimitive;
 use pest::Position;
-use crate::emitter::emit_section;
+use crate::emitter::{Assembly, emit_section};
 
 
 use crate::parser::{parse, Rule};
@@ -187,7 +187,7 @@ pub enum AstNode<'a> {
 }
 
 
-pub fn assemble(source: &str) -> anyhow::Result<Vec<u16>> {
+pub fn assemble(source: &str) -> anyhow::Result<Assembly> {
     let mut ast = parse(source)?;
     // TODO: This assertion could be reflected in the grammar
     assert_eq!(ast.len(), 1, "More than one ORIGIN per file doesn't make sense");
@@ -208,7 +208,8 @@ pub fn assemble(source: &str) -> anyhow::Result<Vec<u16>> {
 pub fn assemble_js(source: &str) -> Result<Vec<u16>, JsValue> {
     let res = assemble(source);
     // res.map(|data| data.into_iter().map(|x| format!("{:x}", x).into()).collect())
-    res.map_err(|err| err.to_string().into())
+    res.map(|assembly| assembly.data().clone())
+        .map_err(|err| err.to_string().into())
 }
 
 

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
-use anyhow::anyhow;
+use anyhow::{bail};
+
 use crate::AstNode;
 use crate::emittable::Emittable;
 use crate::errors::{ErrorWithPosition, PositionContext};
@@ -20,10 +21,61 @@ pub fn push_to_pending_labels(labels: &mut Vec<String>, node: &AstNode) {
     };
 }
 
-pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, ErrorWithPosition> {
+type SourceLocation = usize;
+type MemoryLocation = u16;
+
+pub struct Assembly {
+    data: Vec<u16>,
+    labels: HashMap<String, MemoryLocation>,
+    source_map: HashMap<MemoryLocation, SourceLocation>,
+}
+
+impl Assembly {
+    pub fn new() -> Self {
+        Assembly {
+            data: vec![],
+            labels: Default::default(),
+            source_map: Default::default()
+        }
+    }
+
+    pub fn data(&self) -> &Vec<u16> {
+        &self.data
+    }
+
+    pub fn source_map(&self) -> &HashMap<MemoryLocation, SourceLocation> {
+        &self.source_map
+    }
+
+    pub fn record_labels(&mut self, labels: &mut Vec<String>, offset: MemoryLocation) -> anyhow::Result<()> {
+        for label in labels.drain(..) {
+            if let Some(_) = self.labels.insert(label.clone(), offset) {
+                bail!("Re-defined label with name '{}'. Labels must only be used once.", label)
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn record_offset(&mut self, offset: MemoryLocation, loc: SourceLocation) -> anyhow::Result<()> {
+        let insert = self.source_map.insert(offset, loc);
+        if let Some(old_loc) = insert {
+            bail!("Duplicate key for memory location 0x{:x}. Previous value was {}, new value is {}. This is likely an assembler bug.", offset, old_loc, loc);
+        }
+        Ok(())
+    }
+
+    pub fn record_bytecode(&mut self, mut words: Vec<u16>) {
+        self.data.append(&mut words);
+    }
+}
+
+
+
+pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Assembly, ErrorWithPosition> {
     let mut offset = origin;
     let mut emittables = vec![];
-    let mut labels = HashMap::new();
+    let mut assembly = Assembly::new();
 
     // These are the labels defined on empty lines which will be associated with
     // the next instruction that occurs.
@@ -43,16 +95,17 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, Erro
                 }
 
                 if ! pending_labels.is_empty() {
-                    for label in &pending_labels {
-                        if let Some(_) = labels.insert(label.clone(), offset) {
-                            return Err(anyhow!("Re-defined label with name '{}'. Labels must only be used once.", label))
-                                .position(position.clone());
-                        }
-                    }
-                    pending_labels.clear();
+                    assembly.record_labels(&mut pending_labels, offset).position(position.clone())?;
                 }
 
                 let emittable = to_emittable(x).position(position.clone())?;
+
+                // Associate not only the beginning of this emittable with the source location, but
+                // also all following memory locations in case the emittable's size is > 1
+                for x in offset..(offset + emittable.size() as u16) {
+                    assembly.record_offset(x, position.pos()).position(position.clone())?;
+                }
+
                 offset += emittable.size() as u16;
                 emittables.push((position, emittable));
             }
@@ -79,12 +132,12 @@ pub fn emit_section(origin: u16, content: Vec<AstNode>) -> Result<Vec<u16>, Erro
 
     // Pass 2 - Emit the bytecode now that we have label information
     let mut offset = origin;
-    let mut data = vec![origin];
+    assembly.record_bytecode(vec![origin]);
     for (position, e) in emittables {
-        let mut bytecode = e.emit(offset, &labels).position(position.clone())?;
-        data.append(&mut bytecode);
+        let bytecode = e.emit(offset, &assembly.labels).position(position.clone())?;
+        assembly.record_bytecode(bytecode);
         offset += e.size() as u16;
     }
 
-    Ok(data)
+    Ok(assembly)
 }

@@ -10,11 +10,11 @@ use std::time::{Duration, Instant};
 #[macro_use]
 extern crate log;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use clap::{App, Arg};
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
-use termion::{color, style};
+use termion::{style};
 
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Direction, Layout};
@@ -25,7 +25,7 @@ use tui::widgets::{Block, Borders, Cell, Row, Table};
 use tui::Terminal;
 
 use crate::peripherals::{TerminalDisplay, TerminalKeyboard};
-use lc3vm::peripheral::Peripheral;
+
 
 use lc3vm::{load_object, load_words, tick};
 
@@ -76,9 +76,10 @@ fn load_asm_file(filename: &str, state: &mut VmState) -> Result<u16> {
     let contents = fs::read_to_string(filename)
         .expect("Something went wrong reading the file");
 
-    let data = lc3as::assemble(contents.as_str())?;
+    let assembly = lc3as::assemble(contents.as_str())?;
+    let data = assembly.data();
 
-    load_words(&data, state)
+    load_words(data, state)
 }
 
 struct ReplState<'a> {
@@ -196,7 +197,7 @@ fn parse_command_step(args: &[&str]) -> Result<Cmd> {
 fn eval_line(state: &mut VmState, repl_state: &mut ReplState, cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Load { path } => {
-            load_file(path.as_str(), state, repl_state);
+            load_file(path.as_str(), state, repl_state)?;
         }
 
         Cmd::Step { count } => {
@@ -536,7 +537,7 @@ fn main() -> Result<()> {
     vm_state.peripherals.push(&display);
 
     for p in &parameters.programs {
-        load_file(p, &mut vm_state, &mut repl_state);
+        load_file(p, &mut vm_state, &mut repl_state)?;
     }
 
     if parameters.programs.is_empty() {
