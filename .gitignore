@@ -9,3 +9,4 @@ target/
 flamegraph.svg
 history.txt
 *.out
+www
