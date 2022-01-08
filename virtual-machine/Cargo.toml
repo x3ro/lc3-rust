@@ -4,12 +4,16 @@ version = "0.1.0"
 authors = ["Lucas Jenss <public@x3ro.de>"]
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 num-traits = "0.2"
 num-derive = "0.2"
 anyhow = "1.0.51"
 custom_debug = "0.5.0"
 log = "0.4"
+wasm-bindgen = "0.2"
 
 lc3as = { path = "../assembler" }
 

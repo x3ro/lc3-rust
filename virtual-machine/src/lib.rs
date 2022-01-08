@@ -1,3 +1,10 @@
+pub mod util;
+pub mod debug;
+pub mod opcodes;
+pub mod parser;
+pub mod peripheral;
+pub mod state;
+
 use std::time::Instant;
 
 #[macro_use]
@@ -6,13 +13,8 @@ extern crate log;
 extern crate num_derive;
 use anyhow::Result;
 
-#[macro_use]
-pub mod util;
-pub mod debug;
-pub mod opcodes;
-pub mod parser;
-pub mod peripheral;
-pub mod state;
+#[cfg(target_arch = "wasm32")]
+pub mod wasm;
 
 use opcodes::*;
 use peripheral::Peripheral;

@@ -6,19 +6,22 @@ use std::ops::Index;
 use std::ops::IndexMut;
 use std::ops::Range;
 
+use wasm_bindgen::prelude::*;
+
 pub const MEM_SIZE: usize = 65535;
 const REGISTER_COUNT: usize = 12;
 
+#[wasm_bindgen]
 #[derive(FromPrimitive, Debug, Clone)]
 pub enum Registers {
     R0 = 0,
-    R1,
-    R2,
-    R3,
-    R4,
-    R5,
-    R6,
-    R7,
+    R1 = 1,
+    R2 = 2,
+    R3 = 3,
+    R4 = 4,
+    R5 = 5,
+    R6 = 6,
+    R7 = 7,
 
     // This is where the internal registers start, i.e. the ones
     // that should not be accessible from the code running in the
@@ -26,10 +29,10 @@ pub enum Registers {
     // enum as the general purpose registers.
     // TODO: evaluate whether a separation of internal / external
     //       registers makes sense
-    PC,
-    PSR,
-    SSP,
-    USP,
+    PC = 8,
+    PSR = 9,
+    SSP = 10,
+    USP = 11,
 }
 
 impl Registers {
@@ -60,6 +63,8 @@ impl VmMemory {
     pub fn reset_accesses(&self) {
         self.accesses.borrow_mut().clear();
     }
+
+    pub fn raw(&self) -> &[u16] { &self.memory }
 }
 
 impl Index<u16> for VmMemory {
@@ -94,6 +99,12 @@ pub struct VmRegisters {
     registers: [u16; REGISTER_COUNT],
 }
 
+impl VmRegisters {
+    pub fn raw(&self) -> &[u16] {
+        &self.registers
+    }
+}
+
 impl Index<&Registers> for VmRegisters {
     type Output = u16;
     fn index(&self, index: &Registers) -> &u16 {
@@ -126,8 +137,6 @@ impl IndexMut<Registers> for VmRegisters {
 pub struct VmState<'a> {
     pub memory: VmMemory,
     pub registers: VmRegisters,
-    pub running: bool,
-    pub error: Option<String>,
     pub peripherals: Vec<&'a dyn Peripheral>,
 }
 
@@ -141,8 +150,6 @@ impl<'a> VmState<'a> {
             registers: VmRegisters {
                 registers: [0; REGISTER_COUNT],
             },
-            running: true,
-            error: None,
             peripherals: vec![],
         };
 

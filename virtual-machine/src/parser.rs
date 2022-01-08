@@ -2,8 +2,6 @@
 
 use num_traits::FromPrimitive;
 
-use std::fmt;
-
 use crate::state::Registers;
 use crate::util;
 
@@ -57,10 +55,6 @@ impl Opcode {
             None => panic!("Could not instantiate opcode from <0x{:X}>", opcode),
         }
     }
-}
-
-fn hex_fmt<T: fmt::Debug>(n: &T, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "0x{:02X?}", n)
 }
 
 use Instruction::*;
