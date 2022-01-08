@@ -6,6 +6,8 @@ mod errors;
 #[macro_use]
 extern crate pest_derive;
 
+use wasm_bindgen::prelude::*;
+
 
 use anyhow::{anyhow, bail};
 use pest::iterators::Pair;
@@ -200,6 +202,13 @@ pub fn assemble(source: &str) -> anyhow::Result<Vec<u16>> {
     res.map_err(|e| {
         anyhow!("{}", e)
     })
+}
+
+#[wasm_bindgen]
+pub fn assemble_js(source: &str) -> Result<Vec<u16>, JsValue> {
+    let res = assemble(source);
+    // res.map(|data| data.into_iter().map(|x| format!("{:x}", x).into()).collect())
+    res.map_err(|err| err.to_string().into())
 }
 
 
