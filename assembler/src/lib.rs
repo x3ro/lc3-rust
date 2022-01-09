@@ -6,6 +6,7 @@ mod errors;
 #[macro_use]
 extern crate pest_derive;
 
+use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 
 
@@ -205,11 +206,23 @@ pub fn assemble(source: &str) -> anyhow::Result<Assembly> {
 }
 
 #[wasm_bindgen]
-pub fn assemble_js(source: &str) -> Result<Vec<u16>, JsValue> {
+pub fn assemble_js(source: &str) -> Result<JsValue, JsValue> {
     let res = assemble(source);
-    // res.map(|data| data.into_iter().map(|x| format!("{:x}", x).into()).collect())
-    res.map(|assembly| assembly.data().clone())
-        .map_err(|err| err.to_string().into())
+
+    match res {
+        Ok(assembly) => {
+            let mut map = assembly.source_map().clone();
+            for (_, loc) in map.iter_mut() {
+                let pos = Position::new(source, *loc).unwrap();
+                *loc = pos.line_col().0;
+            }
+            Ok(JsValue::from_serde(&(
+                assembly.data().clone(),
+                map
+            )).unwrap())
+        }
+        Err(e) => Err(e.to_string().into())
+    }
 }
 
 
