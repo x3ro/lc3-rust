@@ -1,0 +1,59 @@
+@import 'bulma/css/bulma.css';
+
+.output {
+    white-space: break-spaces;
+}
+
+#editor {
+    height: 500px;
+}
+
+.myLineDecoration::before {
+    content: "PC>";
+    font-weight: bold;
+    padding-left: 0.2em;
+    color: #f14668;
+}
+
+.myInlineDecoration {
+    background: rgba($color: #f14668, $alpha: 0.25);
+}
+
+.content.register-parent {
+    flex-grow: 1;
+}
+
+.tags.register-container {
+    margin-bottom: 0;
+}
+
+.register {
+    flex-grow: 1;
+}
+
+.register-container .tag.is-dark {
+    width: 4em;
+    font-weight: bold;
+}
+
+.editor-container {
+    background: #FDF6E3;
+}
+
+
+#character-output {
+    white-space: pre-wrap;
+    max-height: 150px;
+    overflow-y: scroll;
+    overflow-x: auto;
+    font-size: 0.9rem;
+    flex-grow: 1;
+    font-family: monospace;
+    color: rgba($color: #000, $alpha: 0.5);
+    min-height: 50px;
+}
+
+#character-output:focus {
+    //background: red;;
+    color: #000;
+}

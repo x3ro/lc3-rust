@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LC3</title>
+  </head>
+  <body>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    
+    <nav class="navbar is-info" role="navigation" aria-label="main navigation">
+      <div class="navbar-brand">
+        <div class="navbar-item">LC3 Simulator</div>
+      </div>
+    </nav>
+
+    <div class="section">
+      <div class="container">
+        <div class="columns">
+          <div class="column is-two-thirds">
+
+            <nav class="panel">
+              <p class="panel-heading">
+                🖥️ Output (focus me to type)
+              </p>
+              <div class="panel-block">
+                <div tabindex="0" id="character-output"></div>
+              </div>
+            </nav> <!-- /output panel -->
+
+            <div class="box editor-container">
+              <div id="editor"></div>
+            </div>
+
+            <div class="box content">
+              <div class="buttons">
+                <button class="button is-info" id="load">Load</button>
+                <button class="button is-warning" id="reset" disabled>Reset</button>
+                <button class="button is-info" id="run" disabled>Run</button>
+                <button class="button is-info" id="step" disabled>Step</button>
+                <button class="button is-info" id="pause" disabled>Pause</button>
+              </div>
+              
+              <ul>
+                <li>
+                  Step 1: Load the application. This will enable
+                  the "Run", "Step" and "Pause" options.
+                </li>
+                <li>
+                  Step 2: Either "Run" the application at fastest 
+                  speed possible, or take individual steps. You 
+                  cannot modify the code while in this mode.
+                </li>
+                <li>
+                  Step 3: "Reset" the VM if you want to modify your
+                  code and start over 🙂
+                </li>
+              </ul>
+          
+
+            </div>
+
+            <div class="box">
+              <div class="content">
+                <h5 class="title is-5">Status messages</h5>
+                <pre id="output" class="output">Nothing here yet</pre>
+              </div>
+            </div>
+          </div> <!-- /left column -->
+
+          <div class="column">
+                        
+            <nav class="panel">
+              <p class="panel-heading">
+                🧮 Registers
+              </p>
+              <div class="panel-block">
+                <div class="content register-parent">
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R0</span>
+                    <span id="R0-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R1</span>
+                    <span id="R1-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R2</span>
+                    <span id="R2-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R3</span>
+                    <span id="R3-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R4</span>
+                    <span id="R4-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R5</span>
+                    <span id="R5-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R6</span>
+                    <span id="R6-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">R7</span>
+                    <span id="R7-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">PC</span>
+                    <span id="PC-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">PSR</span>
+                    <span id="PSR-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">SSP</span>
+                    <span id="SSP-value" class="tag register">???</span>
+                  </div>
+    
+                  <div class="tags has-addons register-container">
+                    <span class="tag is-dark">USP</span>
+                    <span id="USP-value" class="tag register">???</span>
+                  </div>
+                </div>
+              </div>
+            </nav> <!-- /register panel -->
+
+            <nav class="panel">
+              <p class="panel-heading">
+                💭 Memory
+              </p>
+              <div class="panel-block">
+              </div>
+            </nav> <!-- /memory panel -->
+
+          </div> <!-- /right column -->
+
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
