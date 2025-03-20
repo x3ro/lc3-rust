@@ -1,3 +1,8 @@
+# LC-3 in Rust
+
+This is a reasonably complete implementation of the [LC-3b](https://en.wikipedia.org/wiki/Little_Computer_3), an architectural specification for an educational 16-bit computer. The ISA is described [here](http://users.ece.utexas.edu/~patt/07s.360N/handouts/360n.appC.pdf) (or [here](https://web.archive.org/web/20230826043728/http://users.ece.utexas.edu/~patt/07s.360N/handouts/360n.appC.pdf) if the link is dead).
+
+
 ## TODOs
 
 * Handle Unicode
@@ -11,3 +16,8 @@
 * Hex editors
   * https://codepen.io/isdampe/pen/YQoVaK
   * https://codepen.io/masik/pen/ACpGl
+
+
+## License
+
+GPLv2, see LICENSE file.
